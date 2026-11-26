@@ -1,0 +1,35 @@
+# Build output
+/target/
+/dist/
+/node_modules/
+src-tauri/gen/
+
+# Local data and test leftovers
+*.db
+*.db-wal
+*.db-shm
+.fake-claude-log.jsonl
+.fake-claude-judge-count
+/bench/results/
+/bench/work/
+
+# Secrets never belong in the repository
+.env
+.env.*
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Website build and the legal identity (published on the site, never in the repository)
+site/dist/
+site/legal.local.json
+
+
+# Public copy of the repository (separate git history), see scripts/publish.mjs
+publish/
+

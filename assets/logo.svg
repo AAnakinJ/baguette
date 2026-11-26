@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- App icon (codename): monochrome conductor's baton on a near-black tile. -->
+  <rect x="32" y="32" width="960" height="960" rx="200" fill="#18181B"/>
+  <rect x="32" y="32" width="960" height="960" rx="200" fill="none" stroke="#3F3F46" stroke-width="12"/>
+  <path d="M330 694 L694 330" stroke="#FAFAFA" stroke-width="64" stroke-linecap="round"/>
+  <circle cx="310" cy="714" r="86" fill="#FAFAFA"/>
+</svg>

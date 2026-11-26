@@ -1,0 +1,11 @@
+# Files that stay private: never copied to the public repository by scripts/publish.mjs.
+# One pattern per line; "*" matches anything except "/"; a trailing "/" means a whole folder.
+
+# Internal project reports, plans and the admin checklist.
+docs/phase-*
+
+# Stripe test-mode identifiers (they belong to a personal Stripe account).
+server/stripe-prices.test.json
+
+# Local tooling configuration.
+.claude/

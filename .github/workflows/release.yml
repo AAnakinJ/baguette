@@ -1,0 +1,59 @@
+name: Release
+
+# Builds the installers (Windows NSIS, Linux deb/rpm/AppImage), signs the update packages and
+# publishes a GitHub release with latest.json, which the app's updater reads.
+# Start it by pushing a version tag: git tag v0.2.0 && git push origin v0.2.0
+# One-time secrets (repository Settings -> Secrets and variables -> Actions):
+#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Tests before shipping
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          cargo test --workspace --exclude baguette-desktop
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Baguette ${{ github.ref_name }}
+          releaseBody: See the changes below. The app updates itself.
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

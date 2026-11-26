@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux system libraries (Tauri, keychain)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Interface - install, typecheck, tests, build
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          node site/build.mjs
+          npx vite build
+
+      - name: Engine - unit and end-to-end tests (fake Claude Code, no tokens)
+        run: cargo test --workspace --exclude baguette-desktop
+
+      - name: Desktop app - compile
+        run: cargo build -p baguette-desktop

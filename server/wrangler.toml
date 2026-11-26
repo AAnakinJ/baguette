@@ -1,0 +1,21 @@
+# Licence server. Deploy with `npx wrangler deploy` from this folder once the Cloudflare
+# account exists (see docs/phase-5-checklist.md). Secrets are set with `wrangler secret put`,
+# never written here: SIGNING_KEY, KEY_ENC_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+# RESEND_API_KEY (optional).
+name = "baguette-licence"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[vars]
+PRODUCT_NAME = "Baguette"
+SITE_URL = "https://aanakinj.github.io/baguette"
+API_BASE = "https://baguette-licence.workers.dev"
+STRIPE_API_VERSION = "2025-03-31.basil"
+SUBSCRIPTION_MODE = "on"
+# STRIPE_PRICES, FOUNDER_COUPON, FOUNDER_UNTIL and MAIL_FROM are filled at deploy time.
+STRIPE_PRICES = "{}"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "baguette-licence"
+database_id = "to-be-created"

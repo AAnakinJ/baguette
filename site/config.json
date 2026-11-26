@@ -1,0 +1,9 @@
+{
+  "product": "Baguette",
+  "earlyAccess": true,
+  "api": "https://baguette-licence.workers.dev",
+  "site": "https://aanakinj.github.io/baguette",
+  "download": "https://github.com/AAnakinJ/baguette/releases/latest",
+  "source": "https://github.com/AAnakinJ/baguette",
+  "langs": ["en", "fr", "es", "pt", "de", "ja", "ko", "hi", "ar", "id"]
+}

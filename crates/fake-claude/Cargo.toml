@@ -1,0 +1,16 @@
+﻿[package]
+name = "fake-claude"
+description = "Test double of the Claude Code CLI: replays scripted stream-json so the engine is tested without spending tokens"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde_json.workspace = true
+
+[dev-dependencies]
+baguette-core.workspace = true
+tokio.workspace = true
+tempfile.workspace = true
+serde_json.workspace = true
