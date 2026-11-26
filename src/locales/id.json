@@ -209,7 +209,9 @@
       "done": "Selesai",
       "failed": "Perlu diperbaiki",
       "stopped": "Dihentikan"
-    }
+    },
+    "question": "pertanyaan",
+    "followUp": "lanjutan"
   },
   "settings": {
     "title": "Pengaturan",
@@ -535,5 +537,27 @@
     "upToDate": "Anda memakai versi terbaru.",
     "error": "Tidak bisa memeriksa sekarang. Coba lagi nanti.",
     "signed": "Aplikasi memeriksa saat dimulai. Pembaruan ditandatangani: hanya versi yang diterbitkan proyek yang bisa dipasang."
+  },
+  "ask": {
+    "title": "Apa yang ingin kamu ketahui?",
+    "modeLabel": "Jenis permintaan",
+    "modeTask": "Tugas",
+    "modeQuestion": "Pertanyaan",
+    "placeholder": "Contoh: di mana formulir kontak diproses? Kenapa halamannya lambat di ponsel?",
+    "hint": "Claude Code hanya membaca proyekmu: tidak ada yang diubah. Tanpa brief dan tanpa pemeriksaan, jadi cepat dan murah.",
+    "submit": "Tanyakan",
+    "searching": "Menelusuri proyekmu",
+    "reading": "Membaca file…",
+    "answerTitle": "Jawaban",
+    "failed": "Tidak ada jawaban kali ini. Coba tanyakan dengan lebih spesifik.",
+    "readOnly": "hanya baca, tidak ada yang berubah",
+    "another": "Ajukan pertanyaan lain"
+  },
+  "followUp": {
+    "title": "Lanjutkan tugas ini",
+    "hint": "Minta perubahan pada apa yang baru saja dikerjakan. Claude Code melanjutkan sesi yang sama, jadi ia ingat pekerjaannya dan brief tetap singkat.",
+    "placeholder": "Contoh: perbesar judulnya dan tambahkan jam buka hari Minggu.",
+    "submit": "Siapkan lanjutan",
+    "badge": "Lanjutan dari tugas sebelumnya"
   }
 }

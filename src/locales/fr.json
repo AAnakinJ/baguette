@@ -209,7 +209,9 @@
       "done": "Terminée",
       "failed": "À corriger",
       "stopped": "Arrêtée"
-    }
+    },
+    "question": "question",
+    "followUp": "suite"
   },
   "settings": {
     "title": "Réglages",
@@ -535,5 +537,27 @@
     "upToDate": "Tu as la dernière version.",
     "error": "Impossible de vérifier pour l'instant. Réessaie plus tard.",
     "signed": "L'app vérifie au démarrage. Les mises à jour sont signées : seule une version publiée par le projet peut s'installer."
+  },
+  "ask": {
+    "title": "Que veux-tu savoir ?",
+    "modeLabel": "Type de demande",
+    "modeTask": "Tâche",
+    "modeQuestion": "Question",
+    "placeholder": "Par exemple : où est géré le formulaire de contact ? Pourquoi la page est lente sur téléphone ?",
+    "hint": "Claude Code lit seulement ton projet : rien n'est modifié. Pas de cahier des charges ni de vérification, donc c'est rapide et peu coûteux.",
+    "submit": "Demander",
+    "searching": "Recherche dans ton projet",
+    "reading": "Lecture des fichiers…",
+    "answerTitle": "Réponse",
+    "failed": "Pas de réponse cette fois. Essaie de poser la question plus précisément.",
+    "readOnly": "lecture seule, rien n'a changé",
+    "another": "Poser une autre question"
+  },
+  "followUp": {
+    "title": "Continuer cette tâche",
+    "hint": "Demande une modification de ce qui vient d'être fait. Claude Code reprend la même session : il se souvient du travail et le cahier des charges reste court.",
+    "placeholder": "Par exemple : agrandis le titre et ajoute les horaires du dimanche.",
+    "submit": "Préparer la suite",
+    "badge": "Suite de la tâche précédente"
   }
 }

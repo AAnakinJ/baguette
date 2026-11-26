@@ -23,6 +23,15 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::watch;
 
+/// The request as the helper calls see it: the user's words plus, for a follow-up, what the
+/// previous task was about (the stored request stays the user's words only).
+fn with_context(request: &str, context: Option<&str>) -> String {
+    match context {
+        Some(c) => format!("{request}\n\n{c}"),
+        None => request.to_string(),
+    }
+}
+
 /// Without git (no timeline): files modified since `since`, for the anti-leak scan.
 fn recently_modified(root: &Path, since: std::time::SystemTime) -> Vec<FileChange> {
     const SKIP: &[&str] = &[".git", "node_modules", "target", "dist", "build", ".venv", "venv", "__pycache__"];
@@ -112,6 +121,15 @@ pub struct Attempt {
     pub rate_limit: Option<crate::claude::RateLimitInfo>,
 }
 
+/// A task changes the project and is verified; a question only reads it and answers.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskKind {
+    #[default]
+    Task,
+    Question,
+}
+
 /// Where the time goes, per phase (milliseconds). Shown in Expert mode, used by the benchmark.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -156,6 +174,17 @@ pub struct TaskRecord {
     pub total_cost_usd: f64,
     #[serde(default)]
     pub timings: Timings,
+    #[serde(default)]
+    pub kind: TaskKind,
+    /// The task this one continues ("Continue this task").
+    #[serde(default)]
+    pub parent_id: Option<String>,
+    /// Claude Code session the first run resumes (follow-ups), so the agent keeps its context.
+    #[serde(default)]
+    pub resume_from: Option<String>,
+    /// What the helper calls must know about the previous task (follow-ups).
+    #[serde(default)]
+    pub context: Option<String>,
 }
 
 impl TaskRecord {
@@ -216,16 +245,8 @@ impl<'a> Pipeline<'a> {
         Ok(dir)
     }
 
-    /// Step 1: create the task and ask the grill questions.
-    pub async fn start(&self, project: &Project, request: &str, cancel: watch::Receiver<bool>) -> Result<TaskRecord> {
-        let request = request.trim();
-        if request.is_empty() {
-            return Err(Error::Invalid("empty request".into()));
-        }
-        let dir = PathBuf::from(&project.path);
-        let stats = project::scan(&dir);
-        let known = self.store.memory(&project.id)?;
-        let mut t = TaskRecord {
+    fn new_record(&self, project: &Project, request: &str, context: Option<&str>) -> TaskRecord {
+        TaskRecord {
             id: uuid::Uuid::new_v4().to_string(),
             project_id: project.id.clone(),
             request: crate::redact::redact(request).into_owned(),
@@ -246,12 +267,32 @@ impl<'a> Pipeline<'a> {
             manual: HashMap::new(),
             total_cost_usd: 0.0,
             timings: Timings::default(),
-        };
+            kind: TaskKind::Task,
+            parent_id: None,
+            resume_from: None,
+            context: context.map(str::to_string),
+        }
+    }
+
+    /// Step 1: create the task and ask the grill questions.
+    pub async fn start(&self, project: &Project, request: &str, cancel: watch::Receiver<bool>) -> Result<TaskRecord> {
+        self.start_with(project, request, None, cancel).await
+    }
+
+    async fn start_with(&self, project: &Project, request: &str, context: Option<&str>, cancel: watch::Receiver<bool>) -> Result<TaskRecord> {
+        let request = request.trim();
+        if request.is_empty() {
+            return Err(Error::Invalid("empty request".into()));
+        }
+        let dir = PathBuf::from(&project.path);
+        let stats = project::scan(&dir);
+        let known = self.store.memory(&project.id)?;
+        let mut t = self.new_record(project, request, context);
         // One call: questions if needed, otherwise the brief directly.
         let clock = std::time::Instant::now();
         let (prepared, outcome) = grill::prepare(
             self.runner,
-            GrillInput { request: &t.request, lang: &self.settings.language, mode: self.settings.ui_mode, project_summary: &project::context(&dir, &stats), known: &known, cwd: &dir },
+            GrillInput { request: &with_context(&t.request, t.context.as_deref()), lang: &self.settings.language, mode: self.settings.ui_mode, project_summary: &project::context(&dir, &stats), known: &known, cwd: &dir },
             cancel,
         )
         .await?;
@@ -302,7 +343,7 @@ impl<'a> Pipeline<'a> {
         let (spec, outcome) = reprompt::build(
             self.runner,
             BriefInput {
-                request: &t.request,
+                request: &with_context(&t.request, t.context.as_deref()),
                 lang: &self.settings.language,
                 mode: self.settings.ui_mode,
                 project_summary: &project::context(&dir, &stats),
@@ -530,7 +571,8 @@ impl<'a> Pipeline<'a> {
             return Err(Error::Invalid("the task is not ready to run".into()));
         }
         let prompt = t.prompt.clone().ok_or_else(|| Error::Invalid("no prompt".into()))?;
-        self.run_attempt(&mut t, prompt, None, cancel.clone(), on_event).await?;
+        let resume = t.resume_from.clone();
+        self.run_attempt(&mut t, prompt, resume, cancel.clone(), on_event).await?;
         if t.status == TaskStatus::Verifying {
             self.verify_record(&mut t, cancel.clone()).await?;
         }
@@ -550,6 +592,97 @@ impl<'a> Pipeline<'a> {
         let clean_run = t.last_attempt().map_or(false, |a| a.stopped.is_none() && a.error.is_none());
         let budget_left = self.live_cap(t)?.map_or(true, |c| c > 0.05);
         Ok(has_failures && clean_run && budget_left)
+    }
+
+    /// "Continue this task": a new request in the same Claude Code session as `parent_id`, so
+    /// the agent keeps what it already read and did. It still gets its brief, quote and proof.
+    pub async fn follow_up(&self, parent_id: &str, request: &str, cancel: watch::Receiver<bool>) -> Result<TaskRecord> {
+        let parent = self.load(parent_id)?;
+        if parent.kind != TaskKind::Task {
+            return Err(Error::Invalid("not_a_task".into()));
+        }
+        let session = parent.attempts.iter().rev().find_map(|a| a.session_id.clone()).ok_or_else(|| Error::Invalid("no_session".into()))?;
+        let project = self.store.get_project(&parent.project_id)?;
+        let context = prompts::follow_up_context(&parent);
+        let mut t = self.start_with(&project, request, Some(&context), cancel).await?;
+        t.parent_id = Some(parent.id.clone());
+        t.resume_from = Some(session);
+        self.save(&t)?;
+        Ok(t)
+    }
+
+    /// Question mode: Claude Code reads the project and answers. It cannot change anything
+    /// (only Read, Glob and Grep), there is no brief and no verification, and the usual caps apply.
+    pub async fn ask(&self, project: &Project, question: &str, cancel: watch::Receiver<bool>, on_event: &mut (dyn FnMut(LiveEvent) + Send)) -> Result<TaskRecord> {
+        let question = question.trim();
+        if question.is_empty() {
+            return Err(Error::Invalid("empty request".into()));
+        }
+        let dir = PathBuf::from(&project.path);
+        let mut t = self.new_record(project, question, None);
+        t.kind = TaskKind::Question;
+        t.status = TaskStatus::Running;
+        let cap = self.live_cap(&t)?;
+        if cap.map_or(false, |c| c <= 0.0) {
+            return Err(Error::Budget("cap reached".into()));
+        }
+        self.save(&t)?;
+
+        let mut inv = Invocation::new(prompts::question(question, &self.settings.language, self.settings.ui_mode), &dir);
+        let read_only: Vec<String> = ["Read", "Glob", "Grep"].iter().map(|s| s.to_string()).collect();
+        inv.tools = Some(read_only.clone());
+        inv.allowed_tools = read_only;
+        inv.permission_mode = Some(crate::claude::PermissionMode::DontAsk);
+        inv.effort = Some(Effort::Low);
+        inv.max_turns = Some(25);
+        inv.max_budget_usd = cap.map(budget::cli_budget);
+
+        let mut tracker = UsageTracker::default();
+        let default_model = self.store.resolve_model("");
+        let task_id = t.id.clone();
+        let started = now_ts();
+        let clock = std::time::Instant::now();
+        let outcome = self
+            .runner
+            .run(&inv, cancel, |ev| {
+                if let Event::Usage { message_id, model, usage } = ev {
+                    tracker.record(message_id, model.as_deref(), usage);
+                }
+                let so_far = tracker.cost_usd(&default_model);
+                on_event(LiveEvent { task_id: task_id.clone(), event: ev.clone(), cost_so_far_usd: so_far });
+                match cap {
+                    Some(c) if so_far >= c => Control::Stop(StopReason::Budget),
+                    _ => Control::Continue,
+                }
+            })
+            .await?;
+        t.timings.run_ms = clock.elapsed().as_millis() as u64;
+        let cost = self.charge(&mut t, &outcome, "question")?;
+        let result = outcome.result.clone().unwrap_or_default();
+        t.attempts.push(Attempt {
+            started_at: started,
+            session_id: outcome.session_id.clone(),
+            model: outcome.model.clone(),
+            cost_usd: cost,
+            usage: if result.usage.total() > 0 { result.usage } else { outcome.usage },
+            turns: result.num_turns,
+            duration_ms: result.duration_ms,
+            summary: crate::redact::redact(&result.text).into_owned(),
+            stopped: outcome.stopped,
+            error: outcome.api_error.clone().or_else(|| result.is_error.then(|| result.terminal_reason.clone().unwrap_or_else(|| result.subtype.clone()))),
+            ..Default::default()
+        });
+        t.status = match (outcome.stopped, outcome.succeeded()) {
+            (Some(_), _) => TaskStatus::Stopped,
+            (None, true) => TaskStatus::Done,
+            (None, false) => TaskStatus::Failed,
+        };
+        t.finished_at = Some(now_ts());
+        self.save(&t)?;
+        if let Some(code) = &outcome.api_error {
+            return Err(super::llm::map_api_error(code));
+        }
+        Ok(t)
     }
 
     /// Photographs the web result of the last attempt (desktop + phone). Best effort: no

@@ -91,7 +91,13 @@ check("skill_scan", typeof scan.ok?.score === "number", scan.err ? JSON.stringif
 
 // The updater answers (with an error while no release exists) instead of crashing the app.
 const upd = await js("window.__TAURI_INTERNALS__.invoke('plugin:updater|check', {}).then(v => ({ ok: v }), e => ({ err: String(e) }))");
-check("updater plugin answers", upd && (upd.ok !== undefined || typeof upd.err === "string"), upd?.err ? upd.err.slice(0, 90) : "update found");
+check("updater plugin answers", upd && (upd.ok !== undefined || typeof upd.err === "string"), upd?.err ? upd.err.slice(0, 90) : upd?.ok ? `update ${upd.ok.version ?? ""} available` : "up to date");
+
+// Question mode and "continue this task" are wired (refused before any Claude call, so free).
+const ask = await invoke("task_ask", { projectId: pid, question: "   " });
+check("task_ask refuses an empty question", ask.err?.code === "invalid", JSON.stringify(ask.err ?? ask.ok).slice(0, 90));
+const fu = await invoke("task_follow_up", { taskId: "no-such-task", request: "add a footer" });
+check("task_follow_up refuses an unknown task", fu.err?.code === "not_found", JSON.stringify(fu.err ?? fu.ok).slice(0, 90));
 
 // Reload so the interface shows the saved settings, then a screenshot of the real window.
 await js("location.reload()");

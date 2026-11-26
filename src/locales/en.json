@@ -209,7 +209,9 @@
       "done": "Done",
       "failed": "To fix",
       "stopped": "Stopped"
-    }
+    },
+    "question": "question",
+    "followUp": "follow-up"
   },
   "settings": {
     "title": "Settings",
@@ -535,5 +537,27 @@
     "upToDate": "You have the latest version.",
     "error": "Could not check right now. Try again later.",
     "signed": "The app checks at start-up. Updates are signed: only a version published by the project can install."
+  },
+  "ask": {
+    "title": "What do you want to know?",
+    "modeLabel": "Kind of request",
+    "modeTask": "Task",
+    "modeQuestion": "Question",
+    "placeholder": "For example: where is the contact form handled? Why is the page slow on phones?",
+    "hint": "Claude Code only reads your project: nothing is changed. No brief and no checks, so it is fast and cheap.",
+    "submit": "Ask",
+    "searching": "Looking through your project",
+    "reading": "Reading the files…",
+    "answerTitle": "Answer",
+    "failed": "No answer this time. Try asking more precisely.",
+    "readOnly": "read only, nothing changed",
+    "another": "Ask another question"
+  },
+  "followUp": {
+    "title": "Continue this task",
+    "hint": "Ask for a change to what was just done. Claude Code picks up the same session, so it remembers the work and the brief stays short.",
+    "placeholder": "For example: make the title bigger and add the Sunday hours.",
+    "submit": "Prepare the follow-up",
+    "badge": "Follow-up of the previous task"
   }
 }

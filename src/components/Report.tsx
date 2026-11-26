@@ -16,6 +16,7 @@ export function Report({
   onRetry,
   onVerify,
   onNew,
+  onFollowUp,
   setError,
 }: {
   task: TaskRecord;
@@ -25,6 +26,7 @@ export function Report({
   onRetry: () => void;
   onVerify: () => void;
   onNew: () => void;
+  onFollowUp: (request: string) => void;
   setError: (e: unknown) => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -47,6 +49,7 @@ export function Report({
   return (
     <div className="stack">
       <Card tone={tone} title={task.spec?.title ?? t("task.reportTitle")}>
+        {task.parent_id && <p className="small muted">↳ {t("followUp.badge")}</p>}
         {report && (
           <div className={`verdict verdict-${report.verdict}`}>
             <span className="verdict-label">{t(`verdict.${report.verdict}`)}</span>
@@ -178,12 +181,48 @@ export function Report({
 
       {report && <ShareDemo task={task} status={status} />}
 
+      {attempt?.session_id && <FollowUp busy={busy} onFollowUp={onFollowUp} />}
+
       <div className="row end">
-        <button className="btn" onClick={onNew}>
+        <button className="btn-ghost" onClick={onNew}>
           {t("task.newTask")}
         </button>
       </div>
     </div>
+  );
+}
+
+/** "Continue this task": the next request reuses the same Claude Code session,
+ *  so Claude already knows what it just did and the brief stays short. */
+function FollowUp({ busy, onFollowUp }: { busy: string | null; onFollowUp: (request: string) => void }) {
+  const { t } = useTranslation();
+  const [text, setText] = useState("");
+  const send = () => {
+    if (text.trim() && !busy) onFollowUp(text.trim());
+  };
+  return (
+    <Card title={t("followUp.title")}>
+      <p className="muted small">{t("followUp.hint")}</p>
+      <textarea
+        className="compose"
+        rows={3}
+        value={text}
+        placeholder={t("followUp.placeholder")}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
+        }}
+      />
+      <div className="row end">
+        {busy === "preparing" || busy === "planning" ? (
+          <Spinner label={t("task.preparing")} />
+        ) : (
+          <button className="btn" disabled={!text.trim() || !!busy} onClick={send}>
+            {t("followUp.submit")}
+          </button>
+        )}
+      </div>
+    </Card>
   );
 }
 

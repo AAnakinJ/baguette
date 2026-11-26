@@ -27,7 +27,11 @@ export function History({ project, status, onOpen }: { project: ProjectView; sta
           <li key={tk.id}>
             <button className="link-row" onClick={() => onOpen(tk.id)}>
               <span className="grow">
-                <strong>{tk.spec?.title ?? tk.request}</strong>
+                <strong>
+                  {tk.kind === "question" && <span className="tag">{t("history.question")}</span>}
+                  {tk.parent_id && <span className="tag">{t("history.followUp")}</span>}
+                  {tk.spec?.title ?? tk.request}
+                </strong>
                 <span className="muted small">{date(tk.created_at, i18n.language)}</span>
               </span>
               <span className={`tag tag-${tk.status}`}>{t(`history.status.${tk.status}`)}</span>

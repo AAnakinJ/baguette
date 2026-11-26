@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, on } from "../lib/api";
 import type { Answer, AppStatus, ClientQuote, Effort, LiveEvent, ProjectView, TaskRecord } from "../lib/types";
-import { amount, minutes, money, percent } from "../lib/format";
-import { Card, ErrorBanner, Spinner } from "../lib/ui";
+import { amount, duration, minutes, money, percent } from "../lib/format";
+import { Card, ErrorBanner, Segmented, Spinner } from "../lib/ui";
 import { Moon } from "./Logo";
 import { Report } from "./Report";
 
-type Busy = null | "preparing" | "planning" | "running" | "verifying";
+type Busy = null | "preparing" | "planning" | "running" | "verifying" | "asking";
 
 // "default" / "" = keep Claude Code's own choice (shown as "auto").
 const MODELS = ["default", "haiku", "sonnet", "opus", "fable"];
@@ -37,6 +37,8 @@ export function TaskFlow({
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [liveCost, setLiveCost] = useState(0);
   const [promptDraft, setPromptDraft] = useState("");
+  // "task": change the project, with quote and proof. "question": read-only answer.
+  const [mode, setMode] = useState<"task" | "question">("task");
 
   useEffect(() => {
     if (taskId) api.taskGet(taskId).then(setTask).catch(setError);
@@ -57,8 +59,8 @@ export function TaskFlow({
     }
   }
 
-  async function prepare() {
-    const started = await guard("preparing", () => api.taskStart(project.project.id, request));
+  async function prepare(start: () => Promise<TaskRecord> = () => api.taskStart(project.project.id, request)) {
+    const started = await guard("preparing", start);
     if (!started) return;
     setTask(started);
     setChoice(Object.fromEntries(started.questions.map((q) => [q.key, 0])));
@@ -97,27 +99,70 @@ export function TaskFlow({
     onChanged();
   }
 
-  const stage = !task ? "compose" : busy === "running" ? "running" : task.status === "draft" ? "grill" : task.status === "planned" || task.status === "blocked" ? "quote" : "report";
+  /** Question mode: read-only, streamed like a run, answered in one go. */
+  async function ask() {
+    setEvents([]);
+    setLiveCost(0);
+    const off = await on<LiveEvent>("task-event", (ev) => {
+      setEvents((list) => [...list.slice(-300), ev]);
+      setLiveCost(ev.cost_so_far_usd);
+    });
+    const answered = await guard("asking", () => api.taskAsk(project.project.id, request));
+    off();
+    if (answered) setTask(answered);
+    onChanged();
+  }
+
+  /** "Continue this task": a new request in the same Claude Code session. */
+  async function followUp(text: string) {
+    if (!task) return;
+    const parent = task.id;
+    setEvents([]);
+    await prepare(() => api.taskFollowUp(parent, text));
+  }
+
+  function askAnother() {
+    setTask(null);
+    setRequest("");
+    setMode("question");
+  }
+
+  const stage = busy === "asking" ? "asking" : !task ? "compose" : task.kind === "question" ? "answer" : busy === "running" ? "running" : task.status === "draft" ? "grill" : task.status === "planned" || task.status === "blocked" ? "quote" : "report";
+  const question = mode === "question";
+  const submit = () => (question ? ask() : prepare());
 
   return (
     <div className="flow">
       <ErrorBanner error={error} t={t} onClose={() => setError(null)} />
 
       {stage === "compose" && (
-        <Card title={t("task.composeTitle")}>
+        <Card
+          title={question ? t("ask.title") : t("task.composeTitle")}
+          actions={
+            <Segmented
+              label={t("ask.modeLabel")}
+              value={mode}
+              options={[
+                { value: "task", label: t("ask.modeTask") },
+                { value: "question", label: t("ask.modeQuestion") },
+              ]}
+              onChange={setMode}
+            />
+          }
+        >
           <textarea
             className="compose"
-            rows={5}
+            rows={question ? 3 : 5}
             value={request}
-            placeholder={t("task.composePlaceholder")}
+            placeholder={question ? t("ask.placeholder") : t("task.composePlaceholder")}
             onChange={(e) => setRequest(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && request.trim()) void prepare();
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && request.trim()) void submit();
             }}
             autoFocus
           />
-          <p className="muted small">{t("task.composeHint")}</p>
-          {!expert && (
+          <p className="muted small">{question ? t("ask.hint") : t("task.composeHint")}</p>
+          {!expert && !question && (
             <div className="chips" aria-label={t("task.examples")}>
               {["example1", "example2", "example3"].map((k) => (
                 <button key={k} className="chip-btn" onClick={() => setRequest(t(`task.${k}`))}>
@@ -130,13 +175,30 @@ export function TaskFlow({
             {busy === "preparing" ? (
               <Spinner label={t("task.preparing")} />
             ) : (
-              <button className="btn" disabled={!request.trim()} onClick={prepare}>
-                {t("task.prepare")}
+              <button className="btn" disabled={!request.trim()} onClick={() => void submit()}>
+                {question ? t("ask.submit") : t("task.prepare")}
               </button>
             )}
           </div>
         </Card>
       )}
+
+      {stage === "asking" && (
+        <Card
+          title={t("ask.searching")}
+          actions={
+            <button className="btn-danger" onClick={() => api.taskCancel(`ask:${project.project.id}`)}>
+              {t("task.stop")}
+            </button>
+          }
+        >
+          <p className="muted small prewrap">{request}</p>
+          <EventFeed events={events} />
+          <Spinner label={t("ask.reading")} />
+        </Card>
+      )}
+
+      {stage === "answer" && task && <AnswerCard task={task} status={status} onAnother={askAnother} onNew={onNew} />}
 
       {stage === "grill" && task && (
         <Card title={t("task.grillTitle")}>
@@ -231,12 +293,40 @@ export function TaskFlow({
             if (r) setTask(r);
           }}
           onNew={onNew}
+          onFollowUp={followUp}
           setError={setError}
         />
       )}
 
       {stage === "compose" && <MemoryCard project={project} />}
     </div>
+  );
+}
+
+/** The answer of a question (read-only mode). */
+function AnswerCard({ task, status, onAnother, onNew }: { task: TaskRecord; status: AppStatus; onAnother: () => void; onNew: () => void }) {
+  const { t, i18n } = useTranslation();
+  const a = task.attempts[task.attempts.length - 1];
+  const ok = task.status === "done" && !!a?.summary;
+  return (
+    <Card title={t("ask.answerTitle")} tone={ok ? undefined : "warn"}>
+      <p className="muted small prewrap">{task.request}</p>
+      {ok ? <div className="answer prewrap">{a!.summary}</div> : <p className="warn-text">{task.status === "stopped" ? t("task.stoppedUser") : t("ask.failed")}</p>}
+      <div className="row between wrap">
+        <span className="muted small num">
+          {money(task.total_cost_usd, status.settings, i18n.language)}
+          {a && a.duration_ms > 0 && ` · ${duration(a.duration_ms, i18n.language)}`} · {t("ask.readOnly")}
+        </span>
+        <span className="row">
+          <button className="btn-ghost" onClick={onNew}>
+            {t("task.newTask")}
+          </button>
+          <button className="btn" onClick={onAnother}>
+            {t("ask.another")}
+          </button>
+        </span>
+      </div>
+    </Card>
   );
 }
 

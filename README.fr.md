@@ -19,6 +19,7 @@ Baguette est une app de bureau (Windows, Linux) qui pilote le Claude Code offici
 | **Devis et plafond** | Coût probable en euros (clé API) ou en % de ta fenêtre d'utilisation (abonnement). La tâche s'arrête à ton plafond. |
 | **Exécution** | Le CLI `claude` officiel, non modifié, avec le bon modèle, le bon effort et des garde-fous. Les actions irréversibles (push, mise en ligne, suppression en masse) sont bloquées sauf si tu les autorises. |
 | **Preuve** | Chaque critère vérifié : commandes, fichiers, captures (ordinateur et téléphone), relecteur en lecture seule. Les échecs peuvent être retentés dans la même session. |
+| **Continuer et questionner** | « Continuer cette tâche » reprend la même session Claude Code pour une retouche, sans tout réexpliquer. Le mode Question répond sur ton projet en lecture seule, sans rien modifier. |
 | **Pilote de nuit** | Des tâches préparées tournent la nuit. Si ton quota est épuisé, il attend sa remise à zéro et continue. Rapport au réveil. |
 | **Mode freelance** | Prix client sur chaque devis, relevé d'activité mensuel avec la preuve de chaque tâche. |
 | **Sécurité** | Timeline avec retour en arrière en un clic, garde-fou contre les fuites de clés et de données perso, antivirus des skills, docteur des connecteurs. |

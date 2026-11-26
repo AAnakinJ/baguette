@@ -207,13 +207,46 @@ async function invoke<T>(cmd: string, args: Record<string, unknown>): Promise<T>
       tasks.set(t.id, t);
       return r(t);
     }
+    case "task_follow_up": {
+      const parent = tasks.get(String(args.taskId))!;
+      const t = { ...baseTask(String(args.request ?? "")), questions: [], parent_id: parent.id };
+      tasks.set(t.id, t);
+      return r(t);
+    }
+    case "task_ask": {
+      const question = String(args.question ?? "");
+      const steps: LiveEvent["event"][] = [
+        { kind: "tool_use", id: "1", name: "Glob", summary: "**/*.html" },
+        { kind: "tool_use", id: "2", name: "Read", summary: "index.html" },
+        { kind: "tool_use", id: "3", name: "Grep", summary: "form|contact" },
+      ];
+      let cost = 0;
+      for (const ev of steps) {
+        await sleep(500);
+        cost += 0.004;
+        emit("task-event", { task_id: "ask", event: ev, cost_so_far_usd: cost });
+      }
+      spent += cost;
+      const t: TaskRecord = {
+        ...baseTask(question),
+        kind: "question",
+        questions: [],
+        status: "done",
+        finished_at: Date.now() / 1000,
+        total_cost_usd: cost,
+        attempts: [{ started_at: 0, session_id: "q", model: "claude-sonnet-5-5", cost_usd: cost, usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }, turns: 4, duration_ms: 7400, summary: "The contact form is in index.html (section \"contact\", around line 120). It only opens the visitor's email app (mailto:), so nothing is stored on a server.\n\nTo receive the messages directly, a form service or a small backend would be needed.", stopped: null, error: null, denials: [], snapshot_before: null, snapshot_after: null, changes: [], leaks: [], screenshots: [] }],
+        timings: { prepare_ms: 0, brief_ms: 0, run_ms: 7400, screens_ms: 0, verify_ms: 0 },
+      };
+      tasks.set(t.id, t);
+      return r(t);
+    }
     case "task_plan": {
       const t = tasks.get(String(args.taskId))!;
       t.answers = args.answers as Answer[];
       t.status = "planned";
       t.total_cost_usd = 0.06;
       t.spec = {
-        title: "Bakery showcase website",
+        title: t.parent_id ? t.request.slice(0, 60) : "Bakery showcase website",
         role: "You are a senior front-end developer.",
         context: "A bakery in Lyon...",
         objective: "A fast, responsive showcase site in French and English.",

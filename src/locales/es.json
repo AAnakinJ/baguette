@@ -209,7 +209,9 @@
       "done": "Terminada",
       "failed": "Por arreglar",
       "stopped": "Detenida"
-    }
+    },
+    "question": "pregunta",
+    "followUp": "continuación"
   },
   "settings": {
     "title": "Ajustes",
@@ -535,5 +537,27 @@
     "upToDate": "Tienes la última versión.",
     "error": "No se pudo comprobar ahora. Inténtalo más tarde.",
     "signed": "La app comprueba al iniciar. Las actualizaciones están firmadas: solo se instala una versión publicada por el proyecto."
+  },
+  "ask": {
+    "title": "¿Qué quieres saber?",
+    "modeLabel": "Tipo de solicitud",
+    "modeTask": "Tarea",
+    "modeQuestion": "Pregunta",
+    "placeholder": "Por ejemplo: ¿dónde se gestiona el formulario de contacto? ¿Por qué la página va lenta en el móvil?",
+    "hint": "Claude Code solo lee tu proyecto: no se cambia nada. Sin briefing ni verificación, así que es rápido y barato.",
+    "submit": "Preguntar",
+    "searching": "Buscando en tu proyecto",
+    "reading": "Leyendo los archivos…",
+    "answerTitle": "Respuesta",
+    "failed": "Esta vez no hubo respuesta. Prueba a preguntar con más precisión.",
+    "readOnly": "solo lectura, nada cambió",
+    "another": "Hacer otra pregunta"
+  },
+  "followUp": {
+    "title": "Continuar esta tarea",
+    "hint": "Pide un cambio sobre lo que se acaba de hacer. Claude Code retoma la misma sesión: recuerda el trabajo y el briefing sigue siendo corto.",
+    "placeholder": "Por ejemplo: haz el título más grande y añade el horario del domingo.",
+    "submit": "Preparar la continuación",
+    "badge": "Continuación de la tarea anterior"
   }
 }

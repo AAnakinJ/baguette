@@ -19,6 +19,7 @@ Baguette is a desktop app (Windows, Linux) that drives the official Claude Code 
 | **Quote and cap** | Likely cost in money (API key) or in % of your usage window (subscription). The task stops at your cap. |
 | **Run** | The official, unmodified `claude` CLI with the right model, effort and guard-rails. Irreversible actions (push, deploy, mass delete) are blocked unless you allow them. |
 | **Proof** | Every criterion checked: commands, files, screenshots (desktop and phone), a read-only reviewer. Failed checks can be retried in the same session. |
+| **Follow-ups and questions** | "Continue this task" resumes the same Claude Code session for a tweak, without explaining everything again. Question mode answers about your project read-only, without changing anything. |
 | **Night pilot** | Queue prepared tasks for the night. When your quota runs out it waits for the reset and continues. Morning report. |
 | **Freelance mode** | Client price on every quote, monthly activity statement with the proof of each task. |
 | **Safety** | Timeline with one-click undo, leak guard for keys and personal data, skill antivirus, connector doctor. |

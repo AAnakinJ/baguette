@@ -209,7 +209,9 @@
       "done": "Erledigt",
       "failed": "Zu beheben",
       "stopped": "Gestoppt"
-    }
+    },
+    "question": "Frage",
+    "followUp": "Fortsetzung"
   },
   "settings": {
     "title": "Einstellungen",
@@ -535,5 +537,27 @@
     "upToDate": "Du hast die neueste Version.",
     "error": "Prüfung gerade nicht möglich. Versuche es später erneut.",
     "signed": "Die App prüft beim Start. Updates sind signiert: Nur eine vom Projekt veröffentlichte Version lässt sich installieren."
+  },
+  "ask": {
+    "title": "Was möchtest du wissen?",
+    "modeLabel": "Art der Anfrage",
+    "modeTask": "Aufgabe",
+    "modeQuestion": "Frage",
+    "placeholder": "Zum Beispiel: Wo wird das Kontaktformular verarbeitet? Warum ist die Seite auf dem Handy langsam?",
+    "hint": "Claude Code liest dein Projekt nur: Nichts wird geändert. Kein Briefing und keine Prüfung, daher schnell und günstig.",
+    "submit": "Fragen",
+    "searching": "Durchsuche dein Projekt",
+    "reading": "Dateien werden gelesen…",
+    "answerTitle": "Antwort",
+    "failed": "Diesmal keine Antwort. Versuche, genauer zu fragen.",
+    "readOnly": "nur lesend, nichts geändert",
+    "another": "Weitere Frage stellen"
+  },
+  "followUp": {
+    "title": "Diese Aufgabe fortsetzen",
+    "hint": "Bitte um eine Änderung an dem, was gerade gemacht wurde. Claude Code setzt dieselbe Sitzung fort: Es kennt die Arbeit noch und das Briefing bleibt kurz.",
+    "placeholder": "Zum Beispiel: Mach den Titel größer und füge die Sonntagszeiten hinzu.",
+    "submit": "Fortsetzung vorbereiten",
+    "badge": "Fortsetzung der vorherigen Aufgabe"
   }
 }

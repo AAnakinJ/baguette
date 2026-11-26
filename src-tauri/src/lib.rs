@@ -318,6 +318,43 @@ async fn task_retry(app: AppHandle, state: State<'_, AppState>, task_id: String)
     r.map_err(fail)
 }
 
+/// Question mode: read-only answer about the project. Events go out as "task-event";
+/// stop it with task_cancel("ask:<project id>").
+#[tauri::command]
+async fn task_ask(app: AppHandle, state: State<'_, AppState>, project_id: String, question: String) -> CmdResult<TaskRecord> {
+    // Input first, so the user hears about their question before any setup problem.
+    if question.trim().is_empty() {
+        return Err(fail(Error::Invalid("empty request".into())));
+    }
+    let project = state.store.get_project(&project_id).map_err(fail)?;
+    let settings = state.store.load_settings().map_err(fail)?;
+    let runner = make_runner(&state, &settings).map_err(fail)?;
+    let p = Pipeline { store: &state.store, runner: &runner, settings: &settings, entitlements: state.ent() };
+    let key = format!("ask:{project_id}");
+    let rx = register_cancel(&state, &key);
+    let mut on_event = emitter(app);
+    let r = p.ask(&project, &question, rx, &mut on_event).await;
+    unregister_cancel(&state, &key);
+    r.map_err(fail)
+}
+
+/// "Continue this task": prepares a new request in the same Claude Code session.
+#[tauri::command]
+async fn task_follow_up(state: State<'_, AppState>, task_id: String, request: String) -> CmdResult<TaskRecord> {
+    if request.trim().is_empty() {
+        return Err(fail(Error::Invalid("empty request".into())));
+    }
+    state.store.task_json(&task_id).map_err(fail)?;
+    let settings = state.store.load_settings().map_err(fail)?;
+    let runner = make_runner(&state, &settings).map_err(fail)?;
+    let p = Pipeline { store: &state.store, runner: &runner, settings: &settings, entitlements: state.ent() };
+    let key = format!("draft:{task_id}");
+    let rx = register_cancel(&state, &key);
+    let r = p.follow_up(&task_id, &request, rx).await;
+    unregister_cancel(&state, &key);
+    r.map_err(fail)
+}
+
 #[tauri::command]
 async fn task_verify(state: State<'_, AppState>, task_id: String) -> CmdResult<TaskRecord> {
     let settings = state.store.load_settings().map_err(fail)?;
@@ -688,6 +725,8 @@ pub fn run() {
             task_run,
             task_retry,
             task_verify,
+            task_ask,
+            task_follow_up,
             task_cancel,
             task_approve_command,
             task_set_manual,

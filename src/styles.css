@@ -953,6 +953,17 @@ details summary {
 .prewrap {
   white-space: pre-wrap;
 }
+.answer {
+  line-height: 1.6;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.history strong .tag {
+  margin-inline-end: 0.35rem;
+  vertical-align: 0.1em;
+}
 
 /* ---------- lists ---------- */
 .link-row {

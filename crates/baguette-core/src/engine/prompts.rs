@@ -246,6 +246,35 @@ Write the final summary in {lang_name}."#,
     )
 }
 
+/// Question mode: read the project and answer, nothing else.
+pub fn question(question: &str, lang: &str, mode: UiMode) -> String {
+    let audience = match mode {
+        UiMode::Beginner => "The person is not a developer: use plain words, short sentences, and explain any technical term you cannot avoid.",
+        UiMode::Expert => "The person is a developer: be precise and technical, with file paths and line references.",
+    };
+    format!(
+        r#"Answer a question about the project in the current folder.
+Read the files you need with Read, Glob and Grep. Do not modify, create or delete anything, and do not run commands.
+{audience}
+Point to the relevant files with their relative paths. If the project does not tell you the answer, say so plainly instead of guessing.
+Answer in {lang_name}, directly, without repeating the question.
+
+Question:
+{question}"#,
+        lang_name = language_name(lang)
+    )
+}
+
+/// What the helper calls must know when a request continues a previous task.
+pub fn follow_up_context(parent: &super::task::TaskRecord) -> String {
+    let title = parent.spec.as_ref().map(|s| s.title.as_str()).unwrap_or("");
+    let done: String = parent.attempts.last().map(|a| a.summary.chars().take(800).collect()).unwrap_or_default();
+    format!(
+        "(This request continues a previous task in the same project and the same Claude Code session. Previous task: \"{title}\". Previous request: \"{}\". What was done: {done})",
+        parent.request.chars().take(400).collect::<String>()
+    )
+}
+
 /// Sent in the same session after a usage limit or an outage cut the run short.
 pub fn resume_after_limit(lang: &str) -> String {
     format!(

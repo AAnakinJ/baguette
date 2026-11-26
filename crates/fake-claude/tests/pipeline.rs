@@ -515,6 +515,66 @@ async fn failed_criteria_are_fixed_automatically_once() {
 }
 
 #[tokio::test]
+async fn questions_only_read_the_project() {
+    use baguette_core::engine::task::TaskKind;
+    let e = env(json!({"task": {"text": "Le menu est dans index.html, dans la balise <nav>.", "cost": 0.02}}));
+    let (_tx, rx) = watch::channel(false);
+    let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
+    let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
+    let project = e.store.upsert_project(e.dir.path()).unwrap();
+    let mut events = 0;
+    let q = p.ask(&project, "Où est le menu ?", rx, &mut |_| events += 1).await.unwrap();
+    assert_eq!((q.kind, q.status), (TaskKind::Question, TaskStatus::Done));
+    assert_eq!(q.attempts[0].summary, "Le menu est dans index.html, dans la balise <nav>.");
+    assert!(events > 0, "the answer streams like a task");
+    assert!(q.spec.is_none() && q.report.is_none(), "no brief, no verification");
+    // One single Claude Code call, with read-only tools and no structured output.
+    let calls = log(e.dir.path());
+    assert_eq!(calls.len(), 1);
+    let args = args_of(&calls[0]);
+    let tools = &args[args.iter().position(|a| a == "--tools").unwrap() + 1];
+    assert!(["Read", "Glob", "Grep"].iter().all(|t| tools.contains(t)) && !tools.contains("Write") && !tools.contains("Bash") && !tools.contains("Edit"), "{tools}");
+    assert!(!args.iter().any(|a| a == "--json-schema"));
+    assert!(calls[0]["prompt_head"].as_str().unwrap().contains("Do not modify"));
+    // It counts in the spending like everything else, and shows in the history.
+    assert!((e.store.spent().unwrap().today_usd - 0.02).abs() < 1e-6);
+    assert_eq!(p.list(Some(&project.id), 10).unwrap()[0].kind, TaskKind::Question);
+}
+
+#[tokio::test]
+async fn continue_a_task_in_the_same_session() {
+    let e = env(json!({
+        "grill": {"ready": true, "questions": []},
+        "brief": brief(json!([{"id": "c1", "description": "La page existe", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
+        "task": {"files": {"index.html": "<h1>ok</h1>"}, "text": "Page créée."}
+    }));
+    let (_tx, rx) = watch::channel(false);
+    let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
+    let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
+    let project = e.store.upsert_project(e.dir.path()).unwrap();
+    let first = p.start(&project, "Crée la page d'accueil", rx.clone()).await.unwrap();
+    let first = p.execute(&first.id, rx.clone(), &mut |_| {}).await.unwrap();
+    let session = first.last_attempt().unwrap().session_id.clone().unwrap();
+
+    let next = p.follow_up(&first.id, "Ajoute un pied de page", rx.clone()).await.unwrap();
+    assert_eq!(next.parent_id.as_deref(), Some(first.id.as_str()));
+    assert_eq!(next.resume_from.as_deref(), Some(session.as_str()));
+    assert_eq!(next.request, "Ajoute un pied de page", "the stored request stays the user's words");
+    assert!(next.context.as_deref().unwrap().contains("Page créée."), "the helpers know what was done before");
+    assert_eq!(next.status, TaskStatus::Planned);
+
+    let next = p.execute(&next.id, rx.clone(), &mut |_| {}).await.unwrap();
+    assert_eq!(next.status, TaskStatus::Done, "still verified");
+    let run = log(e.dir.path()).into_iter().rev().find(|c| !args_of(c).iter().any(|a| a == "--json-schema")).unwrap();
+    let args = args_of(&run);
+    assert_eq!(args[args.iter().position(|a| a == "--resume").unwrap() + 1], session, "same Claude Code session");
+
+    // A question cannot be continued as a task.
+    let q = p.ask(&project, "Où est le titre ?", rx.clone(), &mut |_| {}).await.unwrap();
+    assert!(matches!(p.follow_up(&q.id, "Change-le", rx).await, Err(Error::Invalid(_))));
+}
+
+#[tokio::test]
 async fn denied_irreversible_actions_are_reported() {
     let e = env(json!({
         "grill": {"ready": true, "questions": []},

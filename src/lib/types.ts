@@ -465,6 +465,10 @@ export interface TaskRecord {
   manual: Record<string, boolean>;
   total_cost_usd: number;
   timings?: Timings;
+  /** "question": read-only answer, no brief and no verification. */
+  kind?: "task" | "question";
+  /** The task this one continues (same Claude Code session). */
+  parent_id?: string | null;
 }
 
 export type StreamEvent =
