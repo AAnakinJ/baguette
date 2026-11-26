@@ -8,6 +8,7 @@
 //! - "judge": list of structured outputs, one per judge call (the last one repeats)
 //! - "task": { "text", "files": {path: content}, "steps", "usage_per_step", "model",
 //!             "denials": [command...], "cost", "error" }
+//! - "resume_task": same shape as "task", used instead of it by resumed runs (--resume)
 
 use serde_json::{json, Value};
 use std::io::{Read, Write};
@@ -126,7 +127,13 @@ fn main() {
     }
 
     // Main task run.
-    let task = scenario.get("task").cloned().unwrap_or_else(|| json!({}));
+    let resumed = args.iter().any(|a| a == "--resume");
+    let task = scenario
+        .get("resume_task")
+        .filter(|_| resumed)
+        .or_else(|| scenario.get("task"))
+        .cloned()
+        .unwrap_or_else(|| json!({}));
     // "limit_runs": N -> the first N main runs hit the subscription usage limit.
     let limit_runs = scenario.get("limit_runs").and_then(Value::as_u64).unwrap_or(0);
     if limit_runs > 0 && (bump_counter(&cwd, ".fake-claude-run-count") as u64) < limit_runs {

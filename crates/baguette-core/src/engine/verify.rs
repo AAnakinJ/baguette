@@ -433,6 +433,7 @@ mod tests {
             size: crate::quote::TaskSize::Small,
             risks: vec![],
             direct: false,
+            express: false,
         };
         let mut r = manual_checklist(&spec);
         assert_eq!(r.verdict, Verdict::Pending);

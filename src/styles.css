@@ -236,8 +236,25 @@ textarea {
 .brand-big strong {
   font-size: 1.15rem;
 }
-.powered {
+/* Opens the GitHub feedback form; sits at the bottom of the sidebar. */
+.feedback-link {
   margin-top: auto;
+  margin-bottom: 0.5rem;
+  text-align: start;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+.feedback-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.powered {
   font-size: 0.72rem;
   color: var(--faint);
   padding-inline: 0.5rem;
@@ -952,6 +969,17 @@ details summary {
 }
 .prewrap {
   white-space: pre-wrap;
+}
+/* Express path notice on the quote. */
+.express-note {
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.express-note p {
+  margin: 0;
 }
 .answer {
   line-height: 1.6;

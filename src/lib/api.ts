@@ -97,6 +97,7 @@ export const api = {
   taskVerify: (taskId: string) => call<TaskRecord>("task_verify", { taskId }),
   taskAsk: (projectId: string, question: string) => call<TaskRecord>("task_ask", { projectId, question }),
   taskFollowUp: (taskId: string, request: string) => call<TaskRecord>("task_follow_up", { taskId, request }),
+  taskPrepareFull: (taskId: string) => call<TaskRecord>("task_prepare_full", { taskId }),
   taskCancel: (key: string) => call<boolean>("task_cancel", { key }),
   taskApproveCommand: (taskId: string, command: string) => call<TaskRecord>("task_approve_command", { taskId, command }),
   taskSetManual: (taskId: string, criterionId: string, passed: boolean) =>

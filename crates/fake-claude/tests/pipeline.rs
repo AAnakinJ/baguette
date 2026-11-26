@@ -644,3 +644,78 @@ async fn user_can_stop_a_run() {
     assert_eq!(t.status, TaskStatus::Stopped);
     assert_eq!(t.last_attempt().unwrap().stopped, Some(StopReason::Cancelled));
 }
+
+#[tokio::test]
+async fn express_path_skips_preparation_and_is_checked_by_the_projects_tests() {
+    let e = env(json!({
+        "grill": {"ready": true, "questions": [], "clarity": "precise"},
+        "brief": brief(json!([{"id": "c1", "description": "ok", "check": {"kind": "judge"}}]), "small"),
+        "task": {"files": {"todo.test.js": "import { test } from 'node:test';\ntest('done', () => {});\n"}, "text": "Added done() and its tests.", "cost": 0.05}
+    }));
+    std::fs::write(e.dir.path().join("package.json"), r#"{"type":"module","scripts":{"test":"node --test"}}"#).unwrap();
+    let (_tx, rx) = watch::channel(false);
+    let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
+    let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
+    let project = e.store.upsert_project(e.dir.path()).unwrap();
+
+    let t = p.start(&project, "Add an exported function done(todos, id), with tests.", rx.clone()).await.unwrap();
+    assert_eq!(t.status, TaskStatus::Planned);
+    let spec = t.spec.as_ref().unwrap();
+    assert!(spec.express && spec.direct);
+    assert!(log(e.dir.path()).is_empty(), "no model call before the run");
+    assert!(t.questions.is_empty() && t.total_cost_usd == 0.0);
+    assert!(t.prompt.as_ref().unwrap().starts_with("Add an exported function done(todos, id)"), "the user's words, as written");
+    assert!(t.prompt.as_ref().unwrap().contains("edge cases"), "a test per edge case is required");
+
+    let t = p.execute(&t.id, rx.clone(), &mut |_| {}).await.unwrap();
+    assert_eq!(t.status, TaskStatus::Done, "{:?}", t.report);
+    let report = t.report.as_ref().unwrap();
+    assert_eq!(report.items.len(), 1);
+    assert_eq!(report.items[0].status, ItemStatus::Passed);
+    assert_eq!(report.judge_cost_usd, 0.0);
+    assert_eq!(log(e.dir.path()).len(), 1, "only the run: no AI reviewer");
+
+    // Express can be refused for one task: the usual preparation takes over.
+    let t = p.start(&project, "Add an exported function undone(todos, id), with tests.", rx.clone()).await.unwrap();
+    assert!(t.spec.as_ref().unwrap().express);
+    let t = p.prepare_fully(&t.id, rx.clone()).await.unwrap();
+    let spec = t.spec.as_ref().unwrap();
+    assert!(!spec.express && !spec.direct);
+    assert!(t.prompt.as_ref().unwrap().contains("# Role"));
+
+    // And switched off in the settings.
+    let off = Settings { express: false, ..e.settings.clone() };
+    let p = Pipeline { store: &e.store, runner: &runner, settings: &off, entitlements: Entitlements::new(Plan::Pro) };
+    let t = p.start(&project, "Add an exported function clear(todos), with tests.", rx).await.unwrap();
+    assert!(!t.spec.as_ref().unwrap().express);
+}
+
+#[tokio::test]
+async fn the_automatic_correction_never_costs_more_than_the_first_attempt() {
+    let heavy = json!({"input_tokens": 20000, "output_tokens": 1000});
+    let e = env(json!({
+        "grill": {"ready": true, "questions": []},
+        "brief": brief(json!([
+            {"id": "c1", "description": "The page exists", "check": {"kind": "file_exists", "path": "index.html"}},
+            {"id": "c2", "description": "Readable on a phone", "check": {"kind": "judge"}}
+        ]), "small"),
+        "task": {"files": {"index.html": "<h1>Bakery</h1>"}, "text": "done", "steps": 2, "usage_per_step": heavy},
+        "resume_task": {"text": "still adjusting the layout", "steps": 40, "usage_per_step": heavy},
+        "judge": [
+            {"results": [{"id": "c2", "passed": false, "evidence": "mobile.png: the title overflows"}]},
+            {"results": [{"id": "c2", "passed": true, "evidence": "mobile.png: the title fits"}]}
+        ]
+    }));
+    let (_tx, rx) = watch::channel(false);
+    let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
+    let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
+    let t = plan_task(&p, &e, &rx).await;
+    let t = p.execute(&t.id, rx, &mut |_| {}).await.unwrap();
+    assert_eq!(t.attempts.len(), 2);
+    let (first, second) = (&t.attempts[0], &t.attempts[1]);
+    assert_eq!(second.stopped, Some(StopReason::RetryLimit), "the 40-step correction is cut at the first attempt's cost");
+    assert!(second.cost_usd <= first.cost_usd + 0.1, "first ${:.3}, correction ${:.3}", first.cost_usd, second.cost_usd);
+    // Stopped at its limit, the work is still verified: here the remark is already fixed.
+    assert_eq!(t.status, TaskStatus::Done, "{:?}", t.report);
+    assert!(t.report.as_ref().unwrap().items.iter().all(|i| i.status == ItemStatus::Passed));
+}

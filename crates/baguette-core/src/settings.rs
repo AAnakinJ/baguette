@@ -85,6 +85,9 @@ pub struct Settings {
     pub screenshots: bool,
     /// Fix failed criteria automatically once, in the same session (Pro).
     pub auto_retry: bool,
+    /// Express path: small precise requests in projects with tests skip the preparation call
+    /// and are checked by the project's tests only.
+    pub express: bool,
     pub onboarded: bool,
 }
 
@@ -103,6 +106,7 @@ impl Default for Settings {
             skill_policy: crate::skillscan::SkillPolicy::Standard,
             screenshots: true,
             auto_retry: true,
+            express: true,
             onboarded: false,
         }
     }

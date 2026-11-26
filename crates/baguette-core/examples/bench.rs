@@ -1,5 +1,7 @@
 //! A/B benchmark: Claude Code alone (A) vs Baguette (B) on the tasks of bench/tasks.json.
 //! Hidden checks are applied after each run and never shown to A or B.
+//! Task kinds: "task" (default), "question" (B uses Question mode) and "follow_up" (a second
+//! request in the same session: A resumes its Claude Code session, B uses "Continue this task").
 //!
 //! Usage (from the repository root):
 //!   cargo run -p baguette-core --example bench -- --task all --mode ab --runs 1
@@ -9,7 +11,7 @@
 use baguette_core::claude::{locate, ConnectionMode, Control, Invocation, PermissionMode, Runner};
 use baguette_core::engine::grill::Answer;
 use baguette_core::engine::routing;
-use baguette_core::engine::task::Pipeline;
+use baguette_core::engine::task::{Pipeline, TaskRecord, TaskStatus};
 use baguette_core::engine::verify::{self, ItemStatus};
 use baguette_core::entitlements::{Entitlements, Plan};
 use baguette_core::settings::{Irreversible, Settings};
@@ -40,6 +42,42 @@ struct RunRecord {
     turns: u32,
     questions: usize,
     error: Option<String>,
+    /// Follow-up tasks: time and cost of the second request alone.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    follow_up: Option<(f64, f64)>,
+}
+
+/// What a run leaves behind besides the files: the final answer, for questions.
+#[derive(Default)]
+struct Outcome {
+    cost: f64,
+    turns: u32,
+    questions: usize,
+    error: Option<String>,
+    answer: String,
+    follow_up: Option<(f64, f64)>,
+}
+
+/// Every file of a folder with its content, to prove that a question changed nothing.
+fn snapshot(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else { continue };
+        for e in rd.flatten() {
+            let p = e.path();
+            if e.file_name().to_string_lossy().starts_with('.') {
+                continue;
+            }
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                out.push((p.strip_prefix(dir).unwrap().to_path_buf(), std::fs::read(&p).unwrap_or_default()));
+            }
+        }
+    }
+    out.sort();
+    out
 }
 
 fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -101,7 +139,7 @@ fn check_local_links(dir: &Path) -> (bool, String) {
     (broken.is_empty(), if broken.is_empty() { format!("{} pages ok", pages.len()) } else { format!("broken: {}", broken.join(", ")) })
 }
 
-async fn run_checks(task: &Value, dir: &Path, bench_dir: &Path) -> Vec<CheckResult> {
+async fn run_checks(task: &Value, dir: &Path, bench_dir: &Path, answer: &str, before: &[(PathBuf, Vec<u8>)]) -> Vec<CheckResult> {
     let mut results = Vec::new();
     let checks = task["checks"].as_array().cloned().unwrap_or_default();
     // Non-command checks first: hidden files must not influence them.
@@ -118,6 +156,15 @@ async fn run_checks(task: &Value, dir: &Path, bench_dir: &Path) -> Vec<CheckResu
                 (hit, String::new())
             }
             "local_links_ok" => check_local_links(dir),
+            "answer_contains" => {
+                let re = Regex::new(c["pattern"].as_str().unwrap_or("^$")).unwrap();
+                (re.is_match(answer), answer.chars().take(80).collect::<String>().replace('\n', " "))
+            }
+            "unchanged" => {
+                let now = snapshot(dir);
+                let same = now == before;
+                (same, if same { "no file changed".into() } else { format!("{} files before, {} after, or contents differ", before.len(), now.len()) })
+            }
             // Tests may be added to existing files: count test cases, not files.
             "test_cases_grow" => {
                 let mut v = Vec::new();
@@ -151,23 +198,62 @@ fn baseline_tools() -> Vec<String> {
 }
 
 /// A: Claude Code alone, raw request, its own defaults (model, effort), edits allowed.
-async fn run_a(runner: &Runner, request: &str, dir: &Path) -> (f64, u32, Option<String>) {
+/// Returns the outcome and the session, so that a follow-up can resume it.
+async fn run_a_once(runner: &Runner, request: &str, dir: &Path, resume: Option<String>) -> (Outcome, Option<String>) {
     let mut inv = Invocation::new(request, dir);
     inv.permission_mode = Some(PermissionMode::AcceptEdits);
     inv.allowed_tools = baseline_tools();
     inv.disallowed_tools = routing::irreversible_deny_rules(&Irreversible::default());
+    inv.resume_session = resume;
     let (_tx, rx) = watch::channel(false);
     match runner.run(&inv, rx, |_| Control::Continue).await {
-        Ok(o) => (o.cost_usd(), o.result.as_ref().map_or(0, |r| r.num_turns), o.api_error.clone().or_else(|| o.result.as_ref().filter(|r| r.is_error).map(|r| r.text.clone()))),
-        Err(e) => (0.0, 0, Some(e.to_string())),
+        Ok(o) => {
+            let error = o.api_error.clone().or_else(|| o.result.as_ref().filter(|r| r.is_error).map(|r| r.text.clone()));
+            let r = o.result.as_ref();
+            let out = Outcome { cost: o.cost_usd(), turns: r.map_or(0, |r| r.num_turns), error, answer: r.map(|r| r.text.clone()).unwrap_or_default(), ..Outcome::default() };
+            (out, o.session_id.clone())
+        }
+        Err(e) => (Outcome { error: Some(e.to_string()), ..Outcome::default() }, None),
     }
 }
 
-/// B: Baguette pipeline; grill answered with the recommended options; one automatic fix.
-async fn run_b(runner: &Runner, request: &str, dir: &Path, db: &Path) -> (f64, u32, usize, Option<String>) {
+async fn run_a(runner: &Runner, task: &Value, dir: &Path) -> Outcome {
+    let request = task["request"].as_str().unwrap_or_default();
+    let (mut first, session) = run_a_once(runner, request, dir, None).await;
+    if let (Some(next), Some(session), None) = (task["follow_up"].as_str(), session, &first.error) {
+        let started = Instant::now();
+        let (second, _) = run_a_once(runner, next, dir, Some(session)).await;
+        first.follow_up = Some((started.elapsed().as_secs_f64(), second.cost));
+        first.cost += second.cost;
+        first.turns += second.turns;
+        first.error = second.error;
+    }
+    first
+}
+
+/// One request through the whole pipeline: questions answered with the recommended options,
+/// one automatic fix by the app, then one manual retry if the app did not retry by itself.
+async fn full(p: &Pipeline<'_>, t: TaskRecord, rx: &watch::Receiver<bool>) -> baguette_core::Result<TaskRecord> {
+    let t = if t.status == TaskStatus::Draft {
+        let answers: Vec<Answer> = t.questions.iter().map(|q| Answer { key: q.key.clone(), question: q.question.clone(), answer: q.options[0].label.clone() }).collect();
+        p.plan(&t.id, answers, rx.clone()).await?
+    } else {
+        t
+    };
+    let mut t = p.execute(&t.id, rx.clone(), &mut |_| {}).await?;
+    if t.attempts.len() < 2 && t.report.as_ref().map_or(false, |r| r.failed > 0) {
+        t = p.retry(&t.id, rx.clone(), &mut |_| {}).await?;
+    }
+    Ok(t)
+}
+
+/// B: Baguette. Tasks go through the pipeline, questions through Question mode, follow-ups
+/// through "Continue this task".
+async fn run_b(runner: &Runner, task: &Value, dir: &Path, db: &Path) -> Outcome {
+    let request = task["request"].as_str().unwrap_or_default();
     let store = match Store::open(db) {
         Ok(s) => s,
-        Err(e) => return (0.0, 0, 0, Some(e.to_string())),
+        Err(e) => return Outcome { error: Some(e.to_string()), ..Outcome::default() },
     };
     let mut settings = Settings { language: "en".into(), ..Settings::default() };
     settings.caps.per_task_usd = None;
@@ -175,22 +261,30 @@ async fn run_b(runner: &Runner, request: &str, dir: &Path, db: &Path) -> (f64, u
     let (_tx, rx) = watch::channel(false);
     let result = async {
         let project = store.upsert_project(dir)?;
+        if task["kind"] == "question" {
+            let q = p.ask(&project, request, rx.clone(), &mut |_| {}).await?;
+            let answer = q.attempts.last().map(|a| a.summary.clone()).unwrap_or_default();
+            return Ok(Outcome { cost: q.total_cost_usd, turns: q.attempts.iter().map(|a| a.turns).sum(), answer, ..Outcome::default() });
+        }
         let t = p.start(&project, request, rx.clone()).await?;
         let questions = t.questions.len();
-        let answers: Vec<Answer> = t.questions.iter().map(|q| Answer { key: q.key.clone(), question: q.question.clone(), answer: q.options[0].label.clone() }).collect();
-        let t = p.plan(&t.id, answers, rx.clone()).await?;
-        let mut t = p.execute(&t.id, rx.clone(), &mut |_| {}).await?;
-        // The run retries once by itself (auto_retry); a second manual retry only if it did not.
-        if t.attempts.len() < 2 && t.report.as_ref().map_or(false, |r| r.failed > 0) {
-            t = p.retry(&t.id, rx.clone(), &mut |_| {}).await?;
+        let t = full(&p, t, &rx).await?;
+        let mut out = Outcome { cost: t.total_cost_usd, turns: t.attempts.iter().map(|a| a.turns).sum(), questions, ..Outcome::default() };
+        if let Some(next) = task["follow_up"].as_str() {
+            let started = Instant::now();
+            let n = p.follow_up(&t.id, next, rx.clone()).await?;
+            out.questions += n.questions.len();
+            let n = full(&p, n, &rx).await?;
+            out.follow_up = Some((started.elapsed().as_secs_f64(), n.total_cost_usd));
+            out.cost += n.total_cost_usd;
+            out.turns += n.attempts.iter().map(|a| a.turns).sum::<u32>();
         }
-        let turns = t.attempts.iter().map(|a| a.turns).sum();
-        Ok::<_, baguette_core::Error>((t.total_cost_usd, turns, questions))
+        Ok::<_, baguette_core::Error>(out)
     }
     .await;
     match result {
-        Ok((c, turns, q)) => (c, turns, q, None),
-        Err(e) => (store.spent().map(|s| s.today_usd).unwrap_or(0.0), 0, 0, Some(format!("{}: {e}", e.code()))),
+        Ok(o) => o,
+        Err(e) => Outcome { cost: store.spent().map(|s| s.today_usd).unwrap_or(0.0), error: Some(format!("{}: {e}", e.code())), ..Outcome::default() },
     }
 }
 
@@ -222,7 +316,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if task_filter != "all" && task_filter != id {
             continue;
         }
-        let request = task["request"].as_str().unwrap_or_default().to_string();
         for run in 1..=runs {
             for m in mode.chars().filter(|c| *c == 'a' || *c == 'b') {
                 let dir = work_root.join(format!("{id}-{m}-{run}"));
@@ -231,21 +324,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     None => std::fs::create_dir_all(&dir)?,
                 }
                 println!("== {id} | mode {} | run {run} | {}", m.to_ascii_uppercase(), dir.display());
+                let before = snapshot(&dir);
                 let started = Instant::now();
-                let (cost, turns, questions, error) = if m == 'a' {
-                    let (c, t, e) = run_a(&runner, &request, &dir).await;
-                    (c, t, 0, e)
-                } else {
-                    run_b(&runner, &request, &dir, &work_root.join(format!("{id}-{run}.db"))).await
-                };
+                let o = if m == 'a' { run_a(&runner, &task, &dir).await } else { run_b(&runner, &task, &dir, &work_root.join(format!("{id}-{run}.db"))).await };
                 let seconds = started.elapsed().as_secs_f64();
-                let checks = run_checks(&task, &dir, &bench_dir).await;
+                let checks = run_checks(&task, &dir, &bench_dir, &o.answer, &before).await;
                 let score = checks.iter().filter(|c| c.passed).count() as f64 / checks.len().max(1) as f64;
-                println!("   score {:.0}%  cost ${cost:.3}  {seconds:.0}s  turns {turns}  questions {questions}  error {error:?}", score * 100.0);
+                let Outcome { cost, turns, questions, error, follow_up, .. } = o;
+                println!("   score {:.0}%  cost ${cost:.3}  {seconds:.0}s  turns {turns}  questions {questions}  follow-up {follow_up:?}  error {error:?}", score * 100.0);
                 for c in &checks {
                     println!("   [{}] {} {}", if c.passed { "x" } else { " " }, c.id, c.detail);
                 }
-                records.push(RunRecord { task: id.clone(), mode: m.to_ascii_uppercase().to_string(), run, score, checks, cost_usd: cost, seconds, turns, questions, error });
+                records.push(RunRecord { task: id.clone(), mode: m.to_ascii_uppercase().to_string(), run, score, checks, cost_usd: cost, seconds, turns, questions, error, follow_up });
             }
         }
     }
@@ -269,6 +359,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ));
         }
     }
+    md.push_str("\nFollow-up tasks also give the second request alone in the JSON results (`follow_up`: seconds, cost).\n");
     std::fs::write(out.join(format!("summary-{stamp}.md")), &md)?;
     println!("\n{md}");
     Ok(())

@@ -164,7 +164,8 @@
       "mobile": "Phone"
     },
     "timings": "Time: preparation {{prepare}} · run {{run}} · checks {{verify}}",
-    "autoRetried": "automatic retries: {{count}}"
+    "autoRetried": "automatic retries: {{count}}",
+    "stoppedRetryLimit": "The automatic correction stopped at its limit (the cost of the first attempt). The result was still checked; you can ask for another correction."
   },
   "verdict": {
     "success": "Everything works",
@@ -251,7 +252,9 @@
     "screenshots": "Photograph web results (computer and phone)",
     "screenshotsHelp": "During the check, the page is opened in a hidden browser and photographed. The reviewer uses the pictures for visual criteria. They stay on your computer.",
     "autoRetry": "If a criterion fails, fix it automatically once",
-    "autoRetryHelp": "Claude Code continues in the same session with the reviewer's findings. Your caps still apply."
+    "autoRetryHelp": "Claude Code continues in the same session with the reviewer's findings. Your caps still apply.",
+    "express": "Express path for small precise requests",
+    "expressHelp": "When a request names code (a function, a file, a command) and the project has tests, Baguette skips the preparation and checks the result with the project's tests only. Faster and cheaper."
   },
   "errors": {
     "claude_not_found": "Claude Code was not found on this computer.",
@@ -559,5 +562,14 @@
     "placeholder": "For example: make the title bigger and add the Sunday hours.",
     "submit": "Prepare the follow-up",
     "badge": "Follow-up of the previous task"
+  },
+  "feedback": {
+    "button": "Give feedback",
+    "hint": "Opens a form on GitHub with the app version and your system already filled in. Nothing is sent without you. A GitHub account is needed."
+  },
+  "express": {
+    "badge": "Express",
+    "hint": "precise request: no questions and no brief to prepare. Claude Code gets your words as written, and {{command}} must pass.",
+    "full": "Full preparation"
   }
 }

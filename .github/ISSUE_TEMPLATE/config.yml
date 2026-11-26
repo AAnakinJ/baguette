@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions
+    url: https://github.com/AAnakinJ/baguette/discussions/categories/q-a
+    about: Ask how to do something with Baguette.
+  - name: Ideas and opinions
+    url: https://github.com/AAnakinJ/baguette/discussions/categories/ideas
+    about: Share an idea or what you think of the app.

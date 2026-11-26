@@ -1,5 +1,5 @@
 {
-  "about": "A/B benchmark (Definition of Done). A = Claude Code alone with the raw request. B = Baguette (grill answered with the recommended options, brief, routing, verification, one automatic fix). Hidden checks are never shown to A or B.",
+  "about": "A/B benchmark (Definition of Done). A = Claude Code alone with the raw request. B = Baguette (grill answered with the recommended options, brief, routing, verification, one automatic fix; Question mode for questions; \"Continue this task\" for follow-ups, where A resumes its own session). Hidden checks are never shown to A or B.",
   "tasks": [
     {
       "id": "t1-bakery-site",
@@ -49,7 +49,7 @@
         { "id": "hours", "kind": "html_contains", "pattern": "(?i)hours|open" },
         { "id": "contact", "kind": "html_contains", "pattern": "(?i)<form|mailto:|tel:" },
         { "id": "mobile", "kind": "html_contains", "pattern": "(?i)name=[\"']viewport[\"']" },
-        { "id": "english", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"']en" },
+        { "id": "language-declared", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"'][a-z]{2}" },
         { "id": "links", "kind": "local_links_ok" }
       ]
     },
@@ -61,6 +61,30 @@
       "checks": [
         { "id": "own-tests-added", "kind": "test_cases_grow", "baseline": 3 },
         { "id": "hidden-csv-tests", "kind": "command", "command": "node --test", "hidden_files": ["hidden/todo-csv.test.js"] }
+      ]
+    },
+    {
+      "id": "t6-question",
+      "persona": "developer",
+      "kind": "question",
+      "fixture": "todo-cli",
+      "request": "Where does this app save the todos, and how can I make it use another file?",
+      "checks": [
+        { "id": "file", "kind": "answer_contains", "pattern": "todos\\.json" },
+        { "id": "env-var", "kind": "answer_contains", "pattern": "TODO_FILE" },
+        { "id": "nothing-changed", "kind": "unchanged" }
+      ]
+    },
+    {
+      "id": "t7-follow-up",
+      "persona": "developer",
+      "kind": "follow_up",
+      "fixture": "todo-cli",
+      "request": "Add a `node todo.js rename <id> <text>` command and an exported function rename(todos, id, text), with tests.",
+      "follow_up": "Now do the same for priorities: a `node todo.js priority <id> <high|low>` command and an exported function setPriority(todos, id, level), tested the same way. format() must show high-priority todos with a leading \"!\".",
+      "checks": [
+        { "id": "own-tests-added", "kind": "test_cases_grow", "baseline": 4 },
+        { "id": "existing-and-hidden-tests", "kind": "command", "command": "node --test", "hidden_files": ["hidden/todo-follow.test.js"] }
       ]
     }
   ]

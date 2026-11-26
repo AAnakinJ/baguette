@@ -144,6 +144,11 @@ export function SettingsPanel({ status, save, refresh }: { status: AppStatus; sa
           <span>{t("settings.autoRetry")}</span>
         </label>
         <small className="muted">{t("settings.autoRetryHelp")}</small>
+        <label className="toggle">
+          <input type="checkbox" checked={draft.express} onChange={(e) => set("express", e.target.checked)} />
+          <span>{t("settings.express")}</span>
+        </label>
+        <small className="muted">{t("settings.expressHelp")}</small>
       </Card>
 
       <Card title={t("settings.irreversible")}>

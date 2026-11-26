@@ -164,7 +164,8 @@
       "mobile": "Handy"
     },
     "timings": "Zeit: Vorbereitung {{prepare}} · Ausführung {{run}} · Prüfung {{verify}}",
-    "autoRetried": "automatische Wiederholungen: {{count}}"
+    "autoRetried": "automatische Wiederholungen: {{count}}",
+    "stoppedRetryLimit": "Die automatische Korrektur hat an ihrer Grenze angehalten (die Kosten des ersten Durchgangs). Das Ergebnis wurde trotzdem geprüft; du kannst eine weitere Korrektur anfordern."
   },
   "verdict": {
     "success": "Alles funktioniert",
@@ -251,7 +252,9 @@
     "screenshots": "Web-Ergebnisse fotografieren (Computer und Handy)",
     "screenshotsHelp": "Bei der Prüfung wird die Seite in einem unsichtbaren Browser geöffnet und fotografiert. Der Prüfer nutzt die Bilder für visuelle Kriterien. Sie bleiben auf deinem Computer.",
     "autoRetry": "Wenn ein Kriterium scheitert, einmal automatisch korrigieren",
-    "autoRetryHelp": "Claude Code macht in derselben Sitzung mit den Hinweisen des Prüfers weiter. Deine Obergrenzen gelten weiterhin."
+    "autoRetryHelp": "Claude Code macht in derselben Sitzung mit den Hinweisen des Prüfers weiter. Deine Obergrenzen gelten weiterhin.",
+    "express": "Express-Weg für kleine, präzise Anfragen",
+    "expressHelp": "Wenn eine Anfrage Code nennt (eine Funktion, eine Datei, einen Befehl) und das Projekt Tests hat, überspringt Baguette die Vorbereitung und prüft das Ergebnis nur mit den Tests des Projekts. Schneller und günstiger."
   },
   "errors": {
     "claude_not_found": "Claude Code wurde auf diesem Computer nicht gefunden.",
@@ -559,5 +562,14 @@
     "placeholder": "Zum Beispiel: Mach den Titel größer und füge die Sonntagszeiten hinzu.",
     "submit": "Fortsetzung vorbereiten",
     "badge": "Fortsetzung der vorherigen Aufgabe"
+  },
+  "feedback": {
+    "button": "Feedback geben",
+    "hint": "Öffnet ein Formular auf GitHub, in dem App-Version und System schon ausgefüllt sind. Ohne dich wird nichts gesendet. Ein GitHub-Konto ist nötig."
+  },
+  "express": {
+    "badge": "Express",
+    "hint": "präzise Anfrage: keine Fragen, kein Briefing vorzubereiten. Claude Code erhält deine Worte unverändert, und {{command}} muss bestehen.",
+    "full": "Vollständige Vorbereitung"
   }
 }

@@ -1,5 +1,6 @@
 //! GRILL -> REPROMPT -> ROUTING -> EXECUTION -> VERIFICATION.
 
+pub mod express;
 pub mod freelance;
 pub mod grill;
 pub mod llm;

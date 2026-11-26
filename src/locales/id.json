@@ -164,7 +164,8 @@
       "mobile": "Ponsel"
     },
     "timings": "Waktu: persiapan {{prepare}} · eksekusi {{run}} · pemeriksaan {{verify}}",
-    "autoRetried": "percobaan ulang otomatis: {{count}}"
+    "autoRetried": "percobaan ulang otomatis: {{count}}",
+    "stoppedRetryLimit": "Perbaikan otomatis berhenti di batasnya (biaya percobaan pertama). Hasilnya tetap diperiksa; kamu bisa meminta perbaikan lagi."
   },
   "verdict": {
     "success": "Semua berfungsi",
@@ -251,7 +252,9 @@
     "screenshots": "Foto hasil web (komputer dan ponsel)",
     "screenshotsHelp": "Saat pemeriksaan, halaman dibuka di browser tersembunyi lalu difoto. Peninjau memakai gambar itu untuk kriteria visual. Gambar tetap di komputer Anda.",
     "autoRetry": "Jika kriteria gagal, perbaiki otomatis sekali",
-    "autoRetryHelp": "Claude Code melanjutkan di sesi yang sama dengan catatan peninjau. Batas Anda tetap berlaku."
+    "autoRetryHelp": "Claude Code melanjutkan di sesi yang sama dengan catatan peninjau. Batas Anda tetap berlaku.",
+    "express": "Jalur ekspres untuk permintaan kecil yang jelas",
+    "expressHelp": "Jika permintaan menyebut kode (fungsi, file, atau perintah) dan proyek punya tes, Baguette melewati persiapan dan memeriksa hasil hanya dengan tes proyek. Lebih cepat dan lebih murah."
   },
   "errors": {
     "claude_not_found": "Claude Code tidak ditemukan di komputer ini.",
@@ -559,5 +562,14 @@
     "placeholder": "Contoh: perbesar judulnya dan tambahkan jam buka hari Minggu.",
     "submit": "Siapkan lanjutan",
     "badge": "Lanjutan dari tugas sebelumnya"
+  },
+  "feedback": {
+    "button": "Beri masukan",
+    "hint": "Membuka formulir di GitHub dengan versi aplikasi dan sistemmu yang sudah terisi. Tidak ada yang dikirim tanpa kamu. Perlu akun GitHub."
+  },
+  "express": {
+    "badge": "Ekspres",
+    "hint": "permintaan yang jelas: tanpa pertanyaan dan tanpa brief yang perlu disiapkan. Claude Code menerima kata-katamu apa adanya, dan {{command}} harus lulus.",
+    "full": "Persiapan lengkap"
   }
 }

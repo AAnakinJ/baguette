@@ -21,6 +21,10 @@ pub struct TaskSpec {
     /// brief made precise tasks cost up to 2x more for the same result.
     #[serde(default)]
     pub direct: bool,
+    /// Express path (see `express`): built without a model call, checked by the project's
+    /// tests only. Implies `direct`.
+    #[serde(default)]
+    pub express: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -60,6 +60,7 @@ export function Report({
         )}
         {attempt?.stopped === "budget" && <p className="warn-text">{t("task.stoppedBudget")}</p>}
         {attempt?.stopped === "cancelled" && <p className="warn-text">{t("task.stoppedUser")}</p>}
+        {attempt?.stopped === "retry_limit" && <p className="warn-text">{t("task.stoppedRetryLimit")}</p>}
         {!report && !attempt?.stopped && <p className="bad-text">{t("task.failedRun")}</p>}
         <div className="row wrap small muted">
           <span>

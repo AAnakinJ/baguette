@@ -1,0 +1,46 @@
+name: Feedback
+description: An opinion, an idea or a problem, opened from the app
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you! The app filled in the technical details below; nothing was sent automatically.
+        Never paste an API key, a token or private code here.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Something does not work
+        - An idea
+        - An opinion
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Your feedback
+      description: What you did, what you liked or not, what you expected.
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: Baguette version
+  - type: input
+    id: system
+    attributes:
+      label: System
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+  - type: input
+    id: language
+    attributes:
+      label: Interface language
+  - type: input
+    id: mode
+    attributes:
+      label: Interface mode

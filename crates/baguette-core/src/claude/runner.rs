@@ -23,6 +23,8 @@ pub enum StopReason {
     Budget,
     /// The user pressed Stop.
     Cancelled,
+    /// The automatic correction reached its own limit (the cost of the first attempt).
+    RetryLimit,
 }
 
 /// Running token/cost tally. Each assistant message is counted once even if the stream

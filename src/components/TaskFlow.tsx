@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api, on } from "../lib/api";
-import type { Answer, AppStatus, ClientQuote, Effort, LiveEvent, ProjectView, TaskRecord } from "../lib/types";
+import type { Answer, AppStatus, ClientQuote, Effort, LiveEvent, ProjectView, TaskRecord, TaskSpec } from "../lib/types";
 import { amount, duration, minutes, money, percent } from "../lib/format";
 import { Card, ErrorBanner, Segmented, Spinner } from "../lib/ui";
 import { Moon } from "./Logo";
@@ -251,6 +251,7 @@ export function TaskFlow({
           promptDraft={promptDraft}
           setPromptDraft={setPromptDraft}
           onRun={() => run(false)}
+          onFullPrep={() => prepare(() => api.taskPrepareFull(task.id))}
           onEdit={() => {
             setRequest(task.request);
             setTask(null);
@@ -299,6 +300,31 @@ export function TaskFlow({
       )}
 
       {stage === "compose" && <MemoryCard project={project} />}
+    </div>
+  );
+}
+
+/** Express path: no questions, no brief call, checked by the project's tests only. */
+function ExpressNote({ spec, busy, onFullPrep }: { spec: TaskSpec; busy: Busy; onFullPrep: () => void }) {
+  const { t } = useTranslation();
+  const check = spec.success_criteria[0]?.check;
+  const command = check && check.kind === "command" ? check.command : "";
+  // The command is shown as code inside the translated sentence.
+  const [before, after = ""] = t("express.hint", { command: "\u0000" }).split("\u0000");
+  return (
+    <div className="express-note row between wrap">
+      <p className="small">
+        <strong>⚡ {t("express.badge")}</strong> · {before}
+        <code>{command}</code>
+        {after}
+      </p>
+      {busy === "preparing" ? (
+        <Spinner label={t("task.preparing")} />
+      ) : (
+        <button className="btn-ghost btn-small" disabled={busy !== null} onClick={onFullPrep}>
+          {t("express.full")}
+        </button>
+      )}
     </div>
   );
 }
@@ -427,6 +453,7 @@ function QuoteStage({
   promptDraft,
   setPromptDraft,
   onRun,
+  onFullPrep,
   onEdit,
   onOverride,
   onSavePrompt,
@@ -438,6 +465,7 @@ function QuoteStage({
   promptDraft: string;
   setPromptDraft: (v: string) => void;
   onRun: () => void;
+  onFullPrep: () => void;
   onEdit: () => void;
   onOverride: (model: string, effort: Effort | null, maxTurns: number) => void;
   onSavePrompt: () => void;
@@ -477,6 +505,7 @@ function QuoteStage({
             {sub && !q.quota!.measured && <p>{t("task.estimateUnmeasured")}</p>}
           </div>
         </div>
+        {spec.express && <ExpressNote spec={spec} busy={busy} onFullPrep={onFullPrep} />}
         {cap && !(cap.status === "ok" && cap.effective_cap_usd === null) && (
           <p className={`cap cap-${cap.status}`}>
             {cap.status === "ok" ? t("task.capOk", { cap: capAmount }) : cap.status === "warn" ? t("task.capWarn", { cap: capAmount }) : t("task.capBlocked", { cap: capAmount })}

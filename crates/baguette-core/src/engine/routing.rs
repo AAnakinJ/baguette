@@ -163,6 +163,7 @@ mod tests {
             size,
             risks: vec![],
             direct: false,
+            express: false,
         }
     }
 

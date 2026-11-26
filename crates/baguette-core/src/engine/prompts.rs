@@ -204,6 +204,7 @@ Notes from the app that started you:
 - Do not perform irreversible actions (git push, deployments, publishing packages, payments, sending messages, mass deletions). If one is required, stop and say why.
 - Never write secrets into files.
 - When you fix a bug, first reproduce it with a test using concrete inputs and the exact expected output, then fix it. Compare exact values whenever the user expects exact results.
+- Cover the request with tests: first list the edge cases it mentions or implies (special characters, empty input, unknown ids, rounding...), add a test for each one, then make every check below pass.
 - These points are checked automatically after you finish:
 {criteria}
 - Write your final summary in {lang_name}, in plain words{reader}."#,
@@ -305,6 +306,7 @@ mod tests {
             size: TaskSize::Large,
             risks: vec![],
             direct: false,
+            express: false,
         }
     }
 

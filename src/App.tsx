@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { api, pickFolder } from "./lib/api";
+import { api, openUrl, pickFolder } from "./lib/api";
+import { feedbackUrl } from "./lib/feedback";
 import { syncLicence } from "./lib/licence";
 import type { AppStatus, Project, ProjectView, Settings } from "./lib/types";
 import { applyLanguage } from "./i18n";
@@ -146,6 +147,9 @@ export default function App() {
             {t("nav.settings")}
           </button>
         </nav>
+        <button className="feedback-link" title={t("feedback.hint")} onClick={() => openUrl(feedbackUrl(status))}>
+          {t("feedback.button")}
+        </button>
         <p className="powered">{t("app.poweredBy")}</p>
       </aside>
       <main className="main">

@@ -1,6 +1,7 @@
 //! Task lifecycle: draft (grill) -> planned (brief, route, quote, caps) -> running ->
 //! verifying -> done / failed / stopped. Every step is persisted.
 
+use super::express;
 use super::grill::{self, Answer, GrillInput, Question};
 use super::project::{self, ProjectStats};
 use super::reprompt::{self, BriefInput};
@@ -22,6 +23,9 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::watch;
+
+/// The automatic correction may always spend at least this much, even after a cheap first attempt.
+const RETRY_FLOOR_USD: f64 = 0.10;
 
 /// The request as the helper calls see it: the user's words plus, for a follow-up, what the
 /// previous task was about (the stored request stays the user's words only).
@@ -286,13 +290,47 @@ impl<'a> Pipeline<'a> {
         }
         let dir = PathBuf::from(&project.path);
         let stats = project::scan(&dir);
-        let known = self.store.memory(&project.id)?;
         let mut t = self.new_record(project, request, context);
-        // One call: questions if needed, otherwise the brief directly.
+        // Express path: small precise request, project with tests. No model call at all.
+        if self.settings.express {
+            if let Some(spec) = express::plan(&t.request, &dir) {
+                self.set_brief(&mut t, spec, &dir, &stats)?;
+                self.save(&t)?;
+                return Ok(t);
+            }
+        }
+        self.prepare_record(&mut t, &dir, &stats, cancel).await?;
+        self.save(&t)?;
+        Ok(t)
+    }
+
+    /// "Full preparation": replaces an express brief by the usual questions and brief.
+    pub async fn prepare_fully(&self, task_id: &str, cancel: watch::Receiver<bool>) -> Result<TaskRecord> {
+        let mut t = self.load(task_id)?;
+        if !t.attempts.is_empty() {
+            return Err(Error::Invalid("task already ran".into()));
+        }
+        let dir = self.project_dir(&t)?;
+        let stats = project::scan(&dir);
+        t.spec = None;
+        t.prompt = None;
+        t.route = None;
+        t.quote = None;
+        t.cap_check = None;
+        t.questions = vec![];
+        t.status = TaskStatus::Draft;
+        self.prepare_record(&mut t, &dir, &stats, cancel).await?;
+        self.save(&t)?;
+        Ok(t)
+    }
+
+    /// One call: questions if needed, otherwise the brief directly.
+    async fn prepare_record(&self, t: &mut TaskRecord, dir: &Path, stats: &ProjectStats, cancel: watch::Receiver<bool>) -> Result<()> {
+        let known = self.store.memory(&t.project_id)?;
         let clock = std::time::Instant::now();
         let (prepared, outcome) = grill::prepare(
             self.runner,
-            GrillInput { request: &with_context(&t.request, t.context.as_deref()), lang: &self.settings.language, mode: self.settings.ui_mode, project_summary: &project::context(&dir, &stats), known: &known, cwd: &dir },
+            GrillInput { request: &with_context(&t.request, t.context.as_deref()), lang: &self.settings.language, mode: self.settings.ui_mode, project_summary: &project::context(dir, stats), known: &known, cwd: dir },
             cancel,
         )
         .await?;
@@ -301,15 +339,14 @@ impl<'a> Pipeline<'a> {
         t.questions = prepared.grill.questions;
         match prepared.spec {
             Some(spec) => {
-                self.charge(&mut t, &outcome, "brief")?;
-                self.set_brief(&mut t, spec, &dir, &stats)?;
+                self.charge(t, &outcome, "brief")?;
+                self.set_brief(t, spec, dir, stats)?;
             }
             None => {
-                self.charge(&mut t, &outcome, "grill")?;
+                self.charge(t, &outcome, "grill")?;
             }
         }
-        self.save(&t)?;
-        Ok(t)
+        Ok(())
     }
 
     fn set_brief(&self, t: &mut TaskRecord, spec: TaskSpec, dir: &Path, stats: &ProjectStats) -> Result<()> {
@@ -378,7 +415,8 @@ impl<'a> Pipeline<'a> {
             model: &model_id,
             project_factor: stats.size_factor(),
             calibration: &calibration,
-            overhead_usd: overhead,
+            // Express: no grill, no brief call, no AI reviewer.
+            overhead_usd: if spec.express { 0.0 } else { overhead },
             quota: self.quota_model(),
         });
         let caps = self.settings.caps.for_entitlements(&self.entitlements);
@@ -445,6 +483,7 @@ impl<'a> Pipeline<'a> {
         t: &mut TaskRecord,
         prompt: String,
         resume: Option<String>,
+        limit: Option<f64>,
         cancel: watch::Receiver<bool>,
         on_event: &mut (dyn FnMut(LiveEvent) + Send),
     ) -> Result<()> {
@@ -483,8 +522,9 @@ impl<'a> Pipeline<'a> {
                 }
                 let so_far = tracker.cost_usd(&default_model);
                 on_event(LiveEvent { task_id: task_id.clone(), event: ev.clone(), cost_so_far_usd: so_far });
-                match cap {
-                    Some(c) if so_far >= c => Control::Stop(StopReason::Budget),
+                match (cap, limit) {
+                    (Some(c), _) if so_far >= c => Control::Stop(StopReason::Budget),
+                    (_, Some(l)) if so_far >= l => Control::Stop(StopReason::RetryLimit),
                     _ => Control::Continue,
                 }
             })
@@ -572,12 +612,15 @@ impl<'a> Pipeline<'a> {
         }
         let prompt = t.prompt.clone().ok_or_else(|| Error::Invalid("no prompt".into()))?;
         let resume = t.resume_from.clone();
-        self.run_attempt(&mut t, prompt, resume, cancel.clone(), on_event).await?;
+        self.run_attempt(&mut t, prompt, resume, None, cancel.clone(), on_event).await?;
         if t.status == TaskStatus::Verifying {
             self.verify_record(&mut t, cancel.clone()).await?;
         }
         if self.should_auto_retry(&t)? {
-            return self.retry(task_id, cancel, on_event).await;
+            // Never dearer than the first attempt. Benchmark 2026-11-26: uncapped corrections of
+            // a phone-layout remark cost $1.5-1.9 (4-5x the first attempt) and did not satisfy it.
+            let limit = t.last_attempt().map(|a| a.cost_usd.max(RETRY_FLOOR_USD));
+            return self.retry_with(task_id, limit, cancel, on_event).await;
         }
         Ok(t)
     }
@@ -688,7 +731,8 @@ impl<'a> Pipeline<'a> {
     /// Photographs the web result of the last attempt (desktop + phone). Best effort: no
     /// browser, no page or a capture error simply means no screenshot.
     async fn capture_screens(&self, t: &TaskRecord, dir: &std::path::Path) -> Vec<crate::screens::Shot> {
-        if !self.settings.screenshots || t.attempts.is_empty() {
+        let express = t.spec.as_ref().is_some_and(|s| s.express);
+        if !self.settings.screenshots || t.attempts.is_empty() || express {
             return vec![];
         }
         let (Some(root), Some(browser), Some(page)) =
@@ -795,6 +839,18 @@ impl<'a> Pipeline<'a> {
         cancel: watch::Receiver<bool>,
         on_event: &mut (dyn FnMut(LiveEvent) + Send),
     ) -> Result<TaskRecord> {
+        self.retry_with(task_id, None, cancel, on_event).await
+    }
+
+    /// A retry with its own cost limit (the automatic correction). Stopped at that limit, the
+    /// result is still verified: a partial fix may already pass.
+    async fn retry_with(
+        &self,
+        task_id: &str,
+        limit: Option<f64>,
+        cancel: watch::Receiver<bool>,
+        on_event: &mut (dyn FnMut(LiveEvent) + Send),
+    ) -> Result<TaskRecord> {
         self.entitlements.require(Feature::AutoRetry)?;
         let mut t = self.load(task_id)?;
         let report = t.report.clone().ok_or_else(|| Error::Invalid("no report yet".into()))?;
@@ -804,8 +860,9 @@ impl<'a> Pipeline<'a> {
         }
         let resume = t.last_attempt().and_then(|a| a.session_id.clone());
         let prompt = prompts::retry(&failures, &self.settings.language);
-        self.run_attempt(&mut t, prompt, resume, cancel.clone(), on_event).await?;
-        if t.status == TaskStatus::Verifying {
+        self.run_attempt(&mut t, prompt, resume, limit, cancel.clone(), on_event).await?;
+        let at_limit = t.last_attempt().is_some_and(|a| a.stopped == Some(StopReason::RetryLimit));
+        if t.status == TaskStatus::Verifying || at_limit {
             self.verify_record(&mut t, cancel).await?;
         }
         Ok(t)
@@ -828,7 +885,7 @@ impl<'a> Pipeline<'a> {
             Some(_) => prompts::resume_after_limit(&self.settings.language),
             None => t.prompt.clone().ok_or_else(|| Error::Invalid("no prompt".into()))?,
         };
-        self.run_attempt(&mut t, prompt, resume, cancel.clone(), on_event).await?;
+        self.run_attempt(&mut t, prompt, resume, None, cancel.clone(), on_event).await?;
         if t.status == TaskStatus::Verifying {
             self.verify_record(&mut t, cancel).await?;
         }

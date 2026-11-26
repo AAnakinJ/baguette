@@ -164,7 +164,8 @@
       "mobile": "Móvil"
     },
     "timings": "Tiempo: preparación {{prepare}} · ejecución {{run}} · verificación {{verify}}",
-    "autoRetried": "reintentos automáticos: {{count}}"
+    "autoRetried": "reintentos automáticos: {{count}}",
+    "stoppedRetryLimit": "La corrección automática se detuvo en su límite (el coste del primer intento). El resultado se verificó igualmente; puedes pedir otra corrección."
   },
   "verdict": {
     "success": "Todo funciona",
@@ -251,7 +252,9 @@
     "screenshots": "Fotografiar los resultados web (ordenador y móvil)",
     "screenshotsHelp": "Durante la verificación, la página se abre en un navegador oculto y se fotografía. El revisor usa las imágenes para los criterios visuales. Se quedan en tu ordenador.",
     "autoRetry": "Si un criterio falla, corregirlo automáticamente una vez",
-    "autoRetryHelp": "Claude Code continúa en la misma sesión con las observaciones del revisor. Tus límites siguen aplicándose."
+    "autoRetryHelp": "Claude Code continúa en la misma sesión con las observaciones del revisor. Tus límites siguen aplicándose.",
+    "express": "Vía exprés para peticiones pequeñas y precisas",
+    "expressHelp": "Cuando una petición nombra código (una función, un archivo, un comando) y el proyecto tiene tests, Baguette se salta la preparación y verifica el resultado solo con los tests del proyecto. Más rápido y más barato."
   },
   "errors": {
     "claude_not_found": "No se encontró Claude Code en este ordenador.",
@@ -559,5 +562,14 @@
     "placeholder": "Por ejemplo: haz el título más grande y añade el horario del domingo.",
     "submit": "Preparar la continuación",
     "badge": "Continuación de la tarea anterior"
+  },
+  "feedback": {
+    "button": "Dar tu opinión",
+    "hint": "Abre un formulario en GitHub con la versión de la app y tu sistema ya rellenados. No se envía nada sin ti. Se necesita una cuenta de GitHub."
+  },
+  "express": {
+    "badge": "Exprés",
+    "hint": "petición precisa: sin preguntas ni briefing que preparar. Claude Code recibe tus palabras tal cual y {{command}} debe pasar.",
+    "full": "Preparación completa"
   }
 }

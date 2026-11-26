@@ -69,6 +69,9 @@ struct AppStatus {
     subscription_mode_enabled: bool,
     /// Before paid plans: every feature free (product::EARLY_ACCESS).
     early_access: bool,
+    /// For the feedback form: operating system and processor, nothing personal.
+    os: String,
+    repo_url: &'static str,
 }
 
 #[derive(Serialize)]
@@ -123,6 +126,8 @@ async fn app_status(state: State<'_, AppState>) -> CmdResult<AppStatus> {
         spent: state.store.spent().map_err(fail)?,
         subscription_mode_enabled: subscription_mode_enabled(&state.store),
         early_access: product::EARLY_ACCESS,
+        os: format!("{} {}", std::env::consts::OS, std::env::consts::ARCH),
+        repo_url: product::REPO_URL,
     })
 }
 
@@ -351,6 +356,19 @@ async fn task_follow_up(state: State<'_, AppState>, task_id: String, request: St
     let key = format!("draft:{task_id}");
     let rx = register_cancel(&state, &key);
     let r = p.follow_up(&task_id, &request, rx).await;
+    unregister_cancel(&state, &key);
+    r.map_err(fail)
+}
+
+/// Replaces an express brief by the usual preparation (questions, full brief).
+#[tauri::command]
+async fn task_prepare_full(state: State<'_, AppState>, task_id: String) -> CmdResult<TaskRecord> {
+    let settings = state.store.load_settings().map_err(fail)?;
+    let runner = make_runner(&state, &settings).map_err(fail)?;
+    let p = Pipeline { store: &state.store, runner: &runner, settings: &settings, entitlements: state.ent() };
+    let key = format!("draft:{task_id}");
+    let rx = register_cancel(&state, &key);
+    let r = p.prepare_fully(&task_id, rx).await;
     unregister_cancel(&state, &key);
     r.map_err(fail)
 }
@@ -727,6 +745,7 @@ pub fn run() {
             task_verify,
             task_ask,
             task_follow_up,
+            task_prepare_full,
             task_cancel,
             task_approve_command,
             task_set_manual,

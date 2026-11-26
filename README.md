@@ -42,6 +42,11 @@ Download the installer for your system from the [latest release](../../releases/
 
 Windows may show a SmartScreen warning because the installer is not code-signed yet: click **More info → Run anyway**.
 
+## Feedback
+
+- In the app, **Give feedback** (bottom of the sidebar) opens a GitHub form with the app version and your system already filled in. Nothing is sent without you.
+- Questions and ideas: [Discussions](../../discussions). Bugs: [Issues](../../issues/new/choose).
+
 ## Development
 
 ```bash

@@ -19,6 +19,7 @@ const settings: Settings = {
   skill_policy: "standard",
   screenshots: true,
   auto_retry: true,
+  express: true,
   onboarded: false,
 };
 
@@ -164,6 +165,32 @@ function baseTask(request: string): TaskRecord {
   };
 }
 
+function expressPlan(t: TaskRecord): Partial<TaskRecord> {
+  return {
+    status: "planned",
+    questions: [],
+    total_cost_usd: 0,
+    spec: {
+      title: t.request.slice(0, 70),
+      role: "",
+      context: "",
+      objective: t.request,
+      constraints: [],
+      deliverables: [],
+      output_format: "",
+      size: "small",
+      risks: [],
+      direct: true,
+      express: true,
+      success_criteria: [{ id: "tests", description: "`npm test`", check: { kind: "command", command: "npm test" } }],
+    },
+    prompt: t.request,
+    route: { model: "default", effort: null, permission_mode: "accept_edits", max_turns: 50, allowed_tools: [], disallowed_tools: ["Bash(git push *)"], plan_first: false },
+    quote: { size: "small", model: "claude-sonnet-5-5", effort: "medium", low_usd: 0.12, likely_usd: 0.25, high_usd: 0.6, overhead_usd: 0, tokens_likely: 420000, calibrated: false, samples: 0, quota: { low_pct: 1.2, likely_pct: 2.5, high_pct: 6, measured: false } },
+    cap_check: { status: "ok", effective_cap_usd: 3 },
+  };
+}
+
 async function invoke<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   await sleep(cmd.startsWith("task_") ? 600 : 80);
   const r = (v: unknown) => v as T;
@@ -171,7 +198,7 @@ async function invoke<T>(cmd: string, args: Record<string, unknown>): Promise<T>
     case "app_status": {
       const s: AppStatus = {
         product: "Baguette",
-        version: "0.1.0",
+        version: "0.1.1",
         settings: { ...settings },
         claude: { found: true, version: "2.1.220", version_ok: true, subscription_signed_in: true, auth_method: "claude.ai", plan: "pro" },
         api_key_set: false,
@@ -180,6 +207,8 @@ async function invoke<T>(cmd: string, args: Record<string, unknown>): Promise<T>
         early_access: licence.early_access,
         spent: { today_usd: spent, month_usd: spent + 3.1 },
         subscription_mode_enabled: true,
+        os: "windows x86_64",
+        repo_url: "https://github.com/AAnakinJ/baguette",
       };
       return r(s);
     }
@@ -203,9 +232,19 @@ async function invoke<T>(cmd: string, args: Record<string, unknown>): Promise<T>
     case "forget_memory":
       return r([]);
     case "task_start": {
-      const t = baseTask(String(args.request ?? ""));
+      const request = String(args.request ?? "");
+      const t = baseTask(request);
+      // Same idea as the engine: a request that names code goes the express way.
+      if (settings.express && /`[^`]+`|\b\w+\([^()]*\)|\b[\w-]+\.(js|ts|py|rs|csv|json)\b/.test(request)) {
+        Object.assign(t, expressPlan(t));
+      }
       tasks.set(t.id, t);
       return r(t);
+    }
+    case "task_prepare_full": {
+      const t = tasks.get(String(args.taskId))!;
+      Object.assign(t, { ...baseTask(t.request), id: t.id });
+      return r({ ...t });
     }
     case "task_follow_up": {
       const parent = tasks.get(String(args.taskId))!;

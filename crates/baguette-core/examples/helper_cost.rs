@@ -43,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         size: TaskSize::Tiny,
         risks: vec![],
             direct: false,
+            express: false,
     };
     let judge_criteria: Vec<&Criterion> = spec.success_criteria.iter().collect();
     let judge_prompt = prompts::judge(&spec, &judge_criteria, "fr");

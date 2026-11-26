@@ -151,6 +151,7 @@ pub fn from_value(v: Value) -> Result<TaskSpec> {
         size: TaskSize::parse(&raw.size).unwrap_or(TaskSize::Medium),
         risks,
         direct: false,
+        express: false,
     })
 }
 

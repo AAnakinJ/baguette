@@ -164,7 +164,8 @@
       "mobile": "Celular"
     },
     "timings": "Tempo: preparação {{prepare}} · execução {{run}} · verificação {{verify}}",
-    "autoRetried": "novas tentativas automáticas: {{count}}"
+    "autoRetried": "novas tentativas automáticas: {{count}}",
+    "stoppedRetryLimit": "A correção automática parou no limite (o custo da primeira tentativa). O resultado foi verificado mesmo assim; você pode pedir outra correção."
   },
   "verdict": {
     "success": "Tudo funciona",
@@ -251,7 +252,9 @@
     "screenshots": "Fotografar os resultados web (computador e celular)",
     "screenshotsHelp": "Durante a verificação, a página é aberta em um navegador oculto e fotografada. O revisor usa as imagens para os critérios visuais. Elas ficam no seu computador.",
     "autoRetry": "Se um critério falhar, corrigir automaticamente uma vez",
-    "autoRetryHelp": "O Claude Code continua na mesma sessão com as observações do revisor. Seus limites continuam valendo."
+    "autoRetryHelp": "O Claude Code continua na mesma sessão com as observações do revisor. Seus limites continuam valendo.",
+    "express": "Caminho expresso para pedidos pequenos e precisos",
+    "expressHelp": "Quando um pedido cita código (uma função, um arquivo, um comando) e o projeto tem testes, o Baguette pula a preparação e verifica o resultado só com os testes do projeto. Mais rápido e mais barato."
   },
   "errors": {
     "claude_not_found": "O Claude Code não foi encontrado neste computador.",
@@ -559,5 +562,14 @@
     "placeholder": "Por exemplo: aumente o título e adicione o horário de domingo.",
     "submit": "Preparar a continuação",
     "badge": "Continuação da tarefa anterior"
+  },
+  "feedback": {
+    "button": "Dar sua opinião",
+    "hint": "Abre um formulário no GitHub com a versão do app e o seu sistema já preenchidos. Nada é enviado sem você. É preciso uma conta no GitHub."
+  },
+  "express": {
+    "badge": "Expresso",
+    "hint": "pedido preciso: sem perguntas nem briefing para preparar. O Claude Code recebe suas palavras como estão, e {{command}} precisa passar.",
+    "full": "Preparação completa"
   }
 }

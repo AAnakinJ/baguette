@@ -164,7 +164,8 @@
       "mobile": "Téléphone"
     },
     "timings": "Temps : préparation {{prepare}} · exécution {{run}} · vérification {{verify}}",
-    "autoRetried": "nouvelles tentatives automatiques : {{count}}"
+    "autoRetried": "nouvelles tentatives automatiques : {{count}}",
+    "stoppedRetryLimit": "La correction automatique s'est arrêtée à sa limite (le coût du premier passage). Le résultat a quand même été vérifié ; tu peux demander une autre correction."
   },
   "verdict": {
     "success": "Tout fonctionne",
@@ -251,7 +252,9 @@
     "screenshots": "Photographier les résultats web (ordinateur et téléphone)",
     "screenshotsHelp": "Pendant la vérification, la page est ouverte dans un navigateur invisible et photographiée. Le relecteur s'en sert pour les critères visuels. Les images restent sur ton ordinateur.",
     "autoRetry": "Si un critère échoue, corriger automatiquement une fois",
-    "autoRetryHelp": "Claude Code reprend dans la même session avec les remarques du relecteur. Tes plafonds s'appliquent toujours."
+    "autoRetryHelp": "Claude Code reprend dans la même session avec les remarques du relecteur. Tes plafonds s'appliquent toujours.",
+    "express": "Chemin express pour les petites demandes précises",
+    "expressHelp": "Quand une demande nomme du code (une fonction, un fichier, une commande) et que le projet a des tests, Baguette saute la préparation et vérifie le résultat avec les tests du projet seulement. Plus rapide et moins cher."
   },
   "errors": {
     "claude_not_found": "Claude Code est introuvable sur cet ordinateur.",
@@ -559,5 +562,14 @@
     "placeholder": "Par exemple : agrandis le titre et ajoute les horaires du dimanche.",
     "submit": "Préparer la suite",
     "badge": "Suite de la tâche précédente"
+  },
+  "feedback": {
+    "button": "Donner un avis",
+    "hint": "Ouvre un formulaire sur GitHub avec la version de l'app et ton système déjà remplis. Rien n'est envoyé sans toi. Il faut un compte GitHub."
+  },
+  "express": {
+    "badge": "Express",
+    "hint": "demande précise : pas de questions ni de cahier des charges à préparer. Claude Code reçoit tes mots tels quels, et {{command}} doit réussir.",
+    "full": "Préparation complète"
   }
 }

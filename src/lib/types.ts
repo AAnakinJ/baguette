@@ -37,6 +37,8 @@ export interface Settings {
   skill_policy: SkillPolicy;
   screenshots: boolean;
   auto_retry: boolean;
+  /** Express path for small precise requests in projects with tests. */
+  express: boolean;
   onboarded: boolean;
 }
 
@@ -266,6 +268,9 @@ export interface AppStatus {
   spent: Spent;
   subscription_mode_enabled: boolean;
   early_access?: boolean;
+  /** "windows x86_64", for the feedback form. */
+  os?: string;
+  repo_url?: string;
 }
 
 export interface Project {
@@ -340,6 +345,9 @@ export interface TaskSpec {
   output_format: string;
   size: TaskSize;
   risks: string[];
+  direct?: boolean;
+  /** Built without a model call and checked by the project's tests only. */
+  express?: boolean;
 }
 
 export interface Route {
@@ -403,7 +411,7 @@ export interface Attempt {
   turns: number;
   duration_ms: number;
   summary: string;
-  stopped: "budget" | "cancelled" | null;
+  stopped: "budget" | "cancelled" | "retry_limit" | null;
   error: string | null;
   denials: PermissionDenial[];
   snapshot_before: string | null;
