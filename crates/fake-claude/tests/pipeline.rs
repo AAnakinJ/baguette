@@ -32,7 +32,7 @@ fn env(scenario: Value) -> Env {
 
 fn brief(criteria: Value, size: &str) -> Value {
     json!({
-        "title": "Site boulangerie", "role": "Senior web developer", "context": "c", "objective": "o",
+        "title": "Bakery site", "role": "Senior web developer", "context": "c", "objective": "o",
         "constraints": [], "deliverables": ["index.html"], "output_format": "List files", "size": size,
         "risks": [], "success_criteria": criteria
     })
@@ -40,8 +40,8 @@ fn brief(criteria: Value, size: &str) -> Value {
 
 fn one_question() -> Value {
     json!({"ready": false, "questions": [{
-        "key": "Visual Style", "question": "Quel style pour le site ?", "why": "w", "recommended": 1,
-        "options": [{"label": "Moderne", "description": "d"}, {"label": "Classique", "description": "d"}]
+        "key": "Visual Style", "question": "Which style for the site?", "why": "w", "recommended": 1,
+        "options": [{"label": "Modern", "description": "d"}, {"label": "Classic", "description": "d"}]
     }]})
 }
 
@@ -59,7 +59,7 @@ fn args_of(v: &Value) -> Vec<String> {
 
 async fn plan_task(p: &Pipeline<'_>, e: &Env, rx: &watch::Receiver<bool>) -> TaskRecord {
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, "Crée un site pour ma boulangerie", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Create a website for my bakery", rx.clone()).await.unwrap();
     let answers = t.questions.iter().map(|q| Answer { key: q.key.clone(), question: q.question.clone(), answer: q.options[0].label.clone() }).collect();
     p.plan(&t.id, answers, rx.clone()).await.unwrap()
 }
@@ -69,12 +69,12 @@ async fn full_pipeline_success_and_memory() {
     let e = env(json!({
         "grill": one_question(),
         "brief": brief(json!([
-            {"id": "c1", "description": "La page d'accueil existe", "check": {"kind": "file_exists", "path": "index.html"}},
-            {"id": "c2", "description": "Le nom de la boulangerie apparaît", "check": {"kind": "file_contains", "path": "index.html", "pattern": "Boulangerie"}},
-            {"id": "c3", "description": "Le style est classique", "check": {"kind": "judge"}}
+            {"id": "c1", "description": "The home page exists", "check": {"kind": "file_exists", "path": "index.html"}},
+            {"id": "c2", "description": "The bakery's name appears", "check": {"kind": "file_contains", "path": "index.html", "pattern": "Bakery"}},
+            {"id": "c3", "description": "The style is classic", "check": {"kind": "judge"}}
         ]), "small"),
-        "task": {"files": {"index.html": "<h1>Boulangerie Dupont</h1>"}, "text": "J'ai créé le site.", "cost": 0.12},
-        "judge": [{"results": [{"id": "c3", "passed": true, "evidence": "index.html utilise une police serif"}]}]
+        "task": {"files": {"index.html": "<h1>Dupont Bakery</h1>"}, "text": "I created the site.", "cost": 0.12},
+        "judge": [{"results": [{"id": "c3", "passed": true, "evidence": "index.html uses a serif font"}]}]
     }));
     let (_tx, rx) = watch::channel(false);
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
@@ -82,14 +82,14 @@ async fn full_pipeline_success_and_memory() {
     let project = e.store.upsert_project(e.dir.path()).unwrap();
 
     // GRILL: recommended option first, key normalized.
-    let t = p.start(&project, "Crée un site pour ma boulangerie", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Create a website for my bakery", rx.clone()).await.unwrap();
     assert_eq!(t.status, TaskStatus::Draft);
     assert_eq!(t.questions.len(), 1);
     assert_eq!(t.questions[0].key, "visual_style");
-    assert_eq!(t.questions[0].options[0].label, "Classique");
+    assert_eq!(t.questions[0].options[0].label, "Classic");
 
     // REPROMPT + ROUTING + QUOTE
-    let answers = vec![Answer { key: "visual_style".into(), question: t.questions[0].question.clone(), answer: "Classique".into() }];
+    let answers = vec![Answer { key: "visual_style".into(), question: t.questions[0].question.clone(), answer: "Classic".into() }];
     let t = p.plan(&t.id, answers, rx.clone()).await.unwrap();
     assert_eq!(t.status, TaskStatus::Planned);
     let q = t.quote.clone().unwrap();
@@ -109,7 +109,7 @@ async fn full_pipeline_success_and_memory() {
     // 0.01 grill + 0.01 brief + 0.12 run + 0.01 judge
     assert!((t.total_cost_usd - 0.15).abs() < 1e-6, "{}", t.total_cost_usd);
     assert!((e.store.spent().unwrap().today_usd - 0.15).abs() < 1e-6);
-    assert_eq!(t.last_attempt().unwrap().summary, "J'ai créé le site.");
+    assert_eq!(t.last_attempt().unwrap().summary, "I created the site.");
     assert_eq!(e.store.calibration("small").unwrap().len(), 1, "finished runs calibrate future quotes");
 
     // Subscription mode never passes an API key to Claude Code.
@@ -125,8 +125,8 @@ async fn full_pipeline_success_and_memory() {
     assert!(args_of(&calls[0]).iter().any(|a| a == "--safe-mode"));
 
     // Memory: the same question is never asked twice in this project.
-    assert_eq!(e.store.memory(&project.id).unwrap()[0].answer, "Classique");
-    let t2 = p.start(&project, "Ajoute une page contact", rx.clone()).await.unwrap();
+    assert_eq!(e.store.memory(&project.id).unwrap()[0].answer, "Classic");
+    let t2 = p.start(&project, "Add a contact page", rx.clone()).await.unwrap();
     assert!(t2.questions.is_empty());
 }
 
@@ -140,7 +140,7 @@ async fn clear_request_gets_its_brief_in_a_single_call() {
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::default() };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, "Corrige le bug d'arrondi", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Fix the rounding bug", rx.clone()).await.unwrap();
     assert_eq!(t.status, TaskStatus::Planned, "quote ready right after the first call");
     assert!(t.quote.is_some() && t.prompt.is_some());
     let again = p.plan(&t.id, vec![], rx).await.unwrap();
@@ -161,7 +161,7 @@ async fn precise_requests_get_their_brief_at_once_and_vague_ones_get_a_separate_
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::default() };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let request = "Ajoute une fonction done(todos, id) et des tests.";
+    let request = "Add a done(todos, id) function and tests.";
     let t = p.start(&project, request, rx.clone()).await.unwrap();
     assert_eq!(t.status, TaskStatus::Planned);
     assert!(!t.spec.as_ref().unwrap().direct);
@@ -177,7 +177,7 @@ async fn precise_requests_get_their_brief_at_once_and_vague_ones_get_a_separate_
     }));
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::default() };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, "Fais-moi un site pour ma boulangerie", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Make me a website for my bakery", rx.clone()).await.unwrap();
     assert_eq!(t.status, TaskStatus::Draft);
     assert!(t.spec.is_none());
     let t = p.plan(&t.id, vec![], rx).await.unwrap();
@@ -202,7 +202,7 @@ async fn timeline_lists_changes_flags_leaks_and_restores() {
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &store, runner: &runner, settings: &e.settings, entitlements: Entitlements::default() };
     let project = store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, "Ajoute la config", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Add the config", rx.clone()).await.unwrap();
     let t = p.execute(&t.id, rx, &mut |_| {}).await.unwrap();
     let a = t.last_attempt().unwrap();
 
@@ -234,9 +234,9 @@ async fn web_results_are_photographed_for_the_reviewer() {
     }
     let e = env(json!({
         "grill": {"ready": true, "questions": []},
-        "brief": brief(json!([{"id": "c1", "description": "Lisible sur téléphone", "check": {"kind": "judge"}}]), "small"),
-        "task": {"files": {"index.html": "<!doctype html><meta name=viewport content='width=device-width'><h1>Boulangerie</h1>"}},
-        "judge": [{"results": [{"id": "c1", "passed": true, "evidence": "mobile.png: le titre tient sur l'écran"}]}]
+        "brief": brief(json!([{"id": "c1", "description": "Readable on a phone", "check": {"kind": "judge"}}]), "small"),
+        "task": {"files": {"index.html": "<!doctype html><meta name=viewport content='width=device-width'><h1>Bakery</h1>"}},
+        "judge": [{"results": [{"id": "c1", "passed": true, "evidence": "mobile.png: the title fits on the screen"}]}]
     }));
     let data = tempfile::tempdir().unwrap();
     let store = Store::open(&data.path().join("baguette.db")).unwrap();
@@ -244,7 +244,7 @@ async fn web_results_are_photographed_for_the_reviewer() {
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Trial) };
     let project = store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, "Rends le site lisible sur téléphone", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Make the site readable on phones", rx.clone()).await.unwrap();
     let t = p.execute(&t.id, rx, &mut |_| {}).await.unwrap();
 
     let shots = &t.last_attempt().unwrap().screenshots;
@@ -275,7 +275,7 @@ async fn night_pilot_waits_for_the_quota_then_continues() {
     use baguette_core::engine::night::{self, ItemOutcome, NightEvent, NightOptions};
     let e = env(json!({
         "grill": {"ready": true, "questions": []},
-        "brief": brief(json!([{"id": "c1", "description": "La page existe", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
+        "brief": brief(json!([{"id": "c1", "description": "The page exists", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
         "task": {"files": {"index.html": "<h1>ok</h1>"}, "cost": 0.05},
         "limit_runs": 1,
         "limit_reset_in": 1
@@ -285,8 +285,8 @@ async fn night_pilot_waits_for_the_quota_then_continues() {
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &settings, entitlements: Entitlements::new(Plan::Trial) };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let a = p.start(&project, "Crée la page d'accueil", rx.clone()).await.unwrap();
-    let b = p.start(&project, "Ajoute une page contact", rx.clone()).await.unwrap();
+    let a = p.start(&project, "Create the home page", rx.clone()).await.unwrap();
+    let b = p.start(&project, "Add a contact page", rx.clone()).await.unwrap();
     assert_eq!(a.status, TaskStatus::Planned);
     night::enqueue(&p, &a.id).unwrap();
     assert_eq!(night::enqueue(&p, &b.id).unwrap(), vec![a.id.clone(), b.id.clone()]);
@@ -331,7 +331,7 @@ async fn freelance_statement_lists_verified_work_for_the_client() {
     use baguette_core::engine::freelance::{self, Profile};
     let e = env(json!({
         "grill": {"ready": true, "questions": []},
-        "brief": brief(json!([{"id": "c1", "description": "La page existe", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
+        "brief": brief(json!([{"id": "c1", "description": "The page exists", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
         "task": {"files": {"index.html": "<h1>ok</h1>"}, "cost": 0.40}
     }));
     let settings = Settings { screenshots: false, usd_to_eur: 0.5, ..e.settings.clone() };
@@ -339,10 +339,10 @@ async fn freelance_statement_lists_verified_work_for_the_client() {
     let runner = Runner::new(fake_bin(), ConnectionMode::ApiKey, Some(Secret::new("sk-ant-api03-test-0123456789abcdefghij"))).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &settings, entitlements: Entitlements::new(Plan::Trial) };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let profile = Profile { client_name: "Boulangerie Dupont".into(), hourly_rate: 60.0, markup_pct: 10.0, review_minutes: 30, ..Profile::default() };
+    let profile = Profile { client_name: "Dupont Bakery".into(), hourly_rate: 60.0, markup_pct: 10.0, review_minutes: 30, ..Profile::default() };
     freelance::save_profile(&p, &project.id, &profile).unwrap();
 
-    let t = p.start(&project, "Crée la page d'accueil", rx.clone()).await.unwrap();
+    let t = p.start(&project, "Create the home page", rx.clone()).await.unwrap();
     let cq = freelance::quote_for_task(&p, &t.id).unwrap().expect("a client price once the quote is ready");
     assert_eq!(cq.labour, 30.0);
     assert!(cq.total_low < cq.total_likely && cq.total_likely < cq.total_high);
@@ -359,7 +359,7 @@ async fn freelance_statement_lists_verified_work_for_the_client() {
     assert!((l.ai_cost - (t.total_cost_usd * 0.5 * 100.0).round() / 100.0).abs() < 1e-9);
     assert!((l.ai_billed - (l.ai_cost * 1.1 * 100.0).round() / 100.0).abs() < 1e-9);
     assert!((st.total - (l.labour + l.ai_billed)).abs() < 1e-9);
-    assert_eq!(st.profile.client_name, "Boulangerie Dupont");
+    assert_eq!(st.profile.client_name, "Dupont Bakery");
     // Outside the period: nothing.
     assert!(freelance::statement(&p, &project.id, 0, 1).unwrap().lines.is_empty());
 
@@ -375,7 +375,7 @@ async fn api_key_mode_injects_the_key_and_never_stores_it() {
     let runner = Runner::new(fake_bin(), ConnectionMode::ApiKey, Some(Secret::new(key))).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::default() };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let t = p.start(&project, &format!("utilise ma clé {key} pour tester"), rx).await.unwrap();
+    let t = p.start(&project, &format!("use my key {key} to test"), rx).await.unwrap();
     let calls = log(e.dir.path());
     assert_eq!(calls[0]["has_api_key"], json!(true));
     assert_eq!(calls[0]["api_key_looks_valid"], json!(true));
@@ -454,8 +454,8 @@ async fn retry_resumes_the_session_until_criteria_pass() {
         "brief": brief(json!([{"id": "c1", "description": "Le formulaire marche", "check": {"kind": "judge"}}]), "small"),
         "task": {"text": "fait"},
         "judge": [
-            {"results": [{"id": "c1", "passed": false, "evidence": "le bouton n'envoie rien"}]},
-            {"results": [{"id": "c1", "passed": true, "evidence": "corrigé"}]}
+            {"results": [{"id": "c1", "passed": false, "evidence": "the button sends nothing"}]},
+            {"results": [{"id": "c1", "passed": true, "evidence": "fixed"}]}
         ]
     }));
     let (_tx, rx) = watch::channel(false);
@@ -475,7 +475,7 @@ async fn retry_resumes_the_session_until_criteria_pass() {
     let args = args_of(retry_call);
     let i = args.iter().position(|a| a == "--resume").unwrap();
     assert_eq!(args[i + 1], first_session);
-    assert!(retry_call["prompt_head"].as_str().unwrap().contains("le bouton n'envoie rien"));
+    assert!(retry_call["prompt_head"].as_str().unwrap().contains("the button sends nothing"));
 }
 
 #[tokio::test]
@@ -483,13 +483,13 @@ async fn failed_criteria_are_fixed_automatically_once() {
     let e = env(json!({
         "grill": {"ready": true, "questions": []},
         "brief": brief(json!([
-            {"id": "c1", "description": "La page existe", "check": {"kind": "file_exists", "path": "index.html"}},
+            {"id": "c1", "description": "The page exists", "check": {"kind": "file_exists", "path": "index.html"}},
             {"id": "c2", "description": "Le formulaire marche", "check": {"kind": "judge"}}
         ]), "small"),
         "task": {"files": {"index.html": "<form></form>"}, "text": "fait"},
         "judge": [
-            {"results": [{"id": "c2", "passed": false, "evidence": "le bouton n'envoie rien"}]},
-            {"results": [{"id": "c2", "passed": false, "evidence": "toujours cassé"}]}
+            {"results": [{"id": "c2", "passed": false, "evidence": "the button sends nothing"}]},
+            {"results": [{"id": "c2", "passed": false, "evidence": "still broken"}]}
         ]
     }));
     let (_tx, rx) = watch::channel(false);
@@ -517,15 +517,15 @@ async fn failed_criteria_are_fixed_automatically_once() {
 #[tokio::test]
 async fn questions_only_read_the_project() {
     use baguette_core::engine::task::TaskKind;
-    let e = env(json!({"task": {"text": "Le menu est dans index.html, dans la balise <nav>.", "cost": 0.02}}));
+    let e = env(json!({"task": {"text": "The menu is in index.html, inside the <nav> tag.", "cost": 0.02}}));
     let (_tx, rx) = watch::channel(false);
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
     let mut events = 0;
-    let q = p.ask(&project, "Où est le menu ?", rx, &mut |_| events += 1).await.unwrap();
+    let q = p.ask(&project, "Where is the menu?", rx, &mut |_| events += 1).await.unwrap();
     assert_eq!((q.kind, q.status), (TaskKind::Question, TaskStatus::Done));
-    assert_eq!(q.attempts[0].summary, "Le menu est dans index.html, dans la balise <nav>.");
+    assert_eq!(q.attempts[0].summary, "The menu is in index.html, inside the <nav> tag.");
     assert!(events > 0, "the answer streams like a task");
     assert!(q.spec.is_none() && q.report.is_none(), "no brief, no verification");
     // One single Claude Code call, with read-only tools and no structured output.
@@ -545,22 +545,22 @@ async fn questions_only_read_the_project() {
 async fn continue_a_task_in_the_same_session() {
     let e = env(json!({
         "grill": {"ready": true, "questions": []},
-        "brief": brief(json!([{"id": "c1", "description": "La page existe", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
-        "task": {"files": {"index.html": "<h1>ok</h1>"}, "text": "Page créée."}
+        "brief": brief(json!([{"id": "c1", "description": "The page exists", "check": {"kind": "file_exists", "path": "index.html"}}]), "small"),
+        "task": {"files": {"index.html": "<h1>ok</h1>"}, "text": "Page created."}
     }));
     let (_tx, rx) = watch::channel(false);
     let runner = Runner::new(fake_bin(), ConnectionMode::Subscription, None).unwrap();
     let p = Pipeline { store: &e.store, runner: &runner, settings: &e.settings, entitlements: Entitlements::new(Plan::Pro) };
     let project = e.store.upsert_project(e.dir.path()).unwrap();
-    let first = p.start(&project, "Crée la page d'accueil", rx.clone()).await.unwrap();
+    let first = p.start(&project, "Create the home page", rx.clone()).await.unwrap();
     let first = p.execute(&first.id, rx.clone(), &mut |_| {}).await.unwrap();
     let session = first.last_attempt().unwrap().session_id.clone().unwrap();
 
-    let next = p.follow_up(&first.id, "Ajoute un pied de page", rx.clone()).await.unwrap();
+    let next = p.follow_up(&first.id, "Add a footer", rx.clone()).await.unwrap();
     assert_eq!(next.parent_id.as_deref(), Some(first.id.as_str()));
     assert_eq!(next.resume_from.as_deref(), Some(session.as_str()));
-    assert_eq!(next.request, "Ajoute un pied de page", "the stored request stays the user's words");
-    assert!(next.context.as_deref().unwrap().contains("Page créée."), "the helpers know what was done before");
+    assert_eq!(next.request, "Add a footer", "the stored request stays the user's words");
+    assert!(next.context.as_deref().unwrap().contains("Page created."), "the helpers know what was done before");
     assert_eq!(next.status, TaskStatus::Planned);
 
     let next = p.execute(&next.id, rx.clone(), &mut |_| {}).await.unwrap();
@@ -570,8 +570,8 @@ async fn continue_a_task_in_the_same_session() {
     assert_eq!(args[args.iter().position(|a| a == "--resume").unwrap() + 1], session, "same Claude Code session");
 
     // A question cannot be continued as a task.
-    let q = p.ask(&project, "Où est le titre ?", rx.clone(), &mut |_| {}).await.unwrap();
-    assert!(matches!(p.follow_up(&q.id, "Change-le", rx).await, Err(Error::Invalid(_))));
+    let q = p.ask(&project, "Where is the title?", rx.clone(), &mut |_| {}).await.unwrap();
+    assert!(matches!(p.follow_up(&q.id, "Change it", rx).await, Err(Error::Invalid(_))));
 }
 
 #[tokio::test]

@@ -3,6 +3,7 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createHandler, type Env } from "../src/index.ts";
+import { words } from "../src/pages.ts";
 import { zoneOf } from "../src/pricing.ts";
 import { MemoryStore } from "../src/store.ts";
 import { formEncode, verifyWebhook, type StripeApi } from "../src/stripe.ts";
@@ -102,7 +103,7 @@ describe("worker", () => {
     expect(page.status).toBe(200);
     const html = await page.text();
     const key = /PRO(-[2-9A-HJ-NP-Z]{4}){4}/.exec(html)![0];
-    expect(html).toContain("Ta clé Pro");
+    expect(html).toContain(words("fr").key);
     expect(store.licences).toHaveLength(1);
 
     const act = await handler(req("/v1/activate", { method: "POST", body: JSON.stringify({ key, device: DEVICE }) }));

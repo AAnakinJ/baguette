@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn normalizes_a_messy_brief() {
         let v = json!({
-            "title": "Site boulangerie",
+            "title": "Bakery site",
             "role": "",
             "context": "c",
             "objective": "o",

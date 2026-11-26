@@ -2,7 +2,7 @@
 
 <h1 align="center">Baguette</h1>
 <p align="center"><b>The autopilot for Claude Code: the price before, the proof after — in your language.</b></p>
-<p align="center"><a href="README.fr.md">Français</a> · <a href="docs/benchmark.md">Benchmark</a> · <a href="CONTRIBUTING.md">Contributing</a></p>
+<p align="center"><a href="docs/benchmark.md">Benchmark</a> · <a href="CONTRIBUTING.md">Contributing</a></p>
 
 ---
 

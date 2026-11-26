@@ -61,12 +61,12 @@ check("early access: every feature on", status?.early_access === true && status?
 const lic = (await invoke("licence_get")).ok;
 check("licence_get (no network in early access)", lic?.early_access === true && lic?.status?.plan === "pro");
 
-const settings = { ...status.settings, onboarded: true, language: "fr" };
+const settings = { ...status.settings, onboarded: true, language: "en" };
 const saved = await invoke("save_settings", { settings });
 check("save_settings", saved.ok?.onboarded === true, saved.err ? JSON.stringify(saved.err) : "");
 
 const dir = mkdtempSync(join(tmpdir(), "baguette-e2e-"));
-writeFileSync(join(dir, "index.html"), "<!doctype html><title>Test</title><h1>Bonjour</h1>");
+writeFileSync(join(dir, "index.html"), "<!doctype html><title>Test</title><h1>Hello</h1>");
 const project = await invoke("open_project", { path: dir });
 check("open_project", project.ok?.project?.name?.startsWith("baguette-e2e-"), project.err ? JSON.stringify(project.err) : `stats=${JSON.stringify(project.ok?.stats ?? {}).slice(0, 80)}`);
 const pid = project.ok?.project?.id;
@@ -103,10 +103,17 @@ check("task_follow_up refuses an unknown task", fu.err?.code === "not_found", JS
 await js("location.reload()");
 await new Promise((r) => setTimeout(r, 3000));
 const text = await js("document.body.innerText.slice(0, 400)");
-check("interface renders in French", /Nouvelle tâche|Projets|Accès anticipé/.test(text ?? ""), (text ?? "").replace(/\s+/g, " ").slice(0, 120));
+check("interface renders in English", /New task|Projects|Early access/.test(text ?? ""), (text ?? "").replace(/\s+/g, " ").slice(0, 120));
 if (shotPath) {
   const shot = await cdp("Page.captureScreenshot", { format: "png" });
   if (shot.result?.data) writeFileSync(shotPath, Buffer.from(shot.result.data, "base64"));
+}
+
+// Give the app back its own settings (language included).
+if (status?.settings) {
+  const back = await invoke("save_settings", { settings: status.settings });
+  check("settings restored", !back.err, back.err ? JSON.stringify(back.err) : "");
+  await js("location.reload()");
 }
 
 for (const r of results) console.log(`${r.ok ? "OK " : "NO "} ${r.name}${r.detail ? `  — ${r.detail}` : ""}`);

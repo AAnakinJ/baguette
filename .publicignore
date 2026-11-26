@@ -9,3 +9,6 @@ server/stripe-prices.test.json
 
 # Local tooling configuration.
 .claude/
+
+# The public repository is in English only; the French README stays private.
+README.fr.md

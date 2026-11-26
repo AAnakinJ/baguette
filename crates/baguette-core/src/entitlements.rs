@@ -13,7 +13,7 @@ pub enum Plan {
     Pro,
 }
 
-/// Pro-only features ("la preuve après").
+/// Pro-only features ("the proof after").
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Feature {

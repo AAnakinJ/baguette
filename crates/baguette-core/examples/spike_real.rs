@@ -30,8 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir()?;
     let call = llm::StructuredCall {
         prompt: prompts::grill(
-            "Crée un site vitrine pour ma boulangerie à Lyon",
-            "fr",
+            "Create a showcase website for my bakery in Lyon",
+            "en",
             UiMode::Beginner,
             "Empty folder: the project starts from scratch.",
             &[],

@@ -121,8 +121,8 @@ function identity(production, early) {
   const file = join(HERE, "legal.local.json");
   if (existsSync(file)) return JSON.parse(readFileSync(file, "utf8"));
   if (production && !early) throw new Error("legal.local.json is missing: the legal identity is required to publish (see legal.example.json)");
-  const todo = (what) => `<mark>[À compléter : ${what}]</mark>`;
-  return { name: todo("nom et prénom"), email: "contact@example.invalid", mediator: "" };
+  const todo = (what) => `<mark>[To fill in: ${what}]</mark>`;
+  return { name: todo("full name"), email: "contact@example.invalid", mediator: "" };
 }
 
 export function build({ outDir = join(HERE, "dist"), production = false, today = new Date(), earlyAccess } = {}) {

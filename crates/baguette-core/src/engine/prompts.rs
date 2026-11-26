@@ -325,7 +325,7 @@ mod tests {
     fn direct_mode_keeps_the_users_words() {
         let mut s = spec();
         s.direct = true;
-        let request = "Ajoute une fonction done(todos, id) et des tests.";
+        let request = "Add a done(todos, id) function and tests.";
         let p = task(&s, request, "fr", UiMode::Expert, r"C:\p");
         assert!(p.starts_with(request), "the request is sent as written");
         assert!(!p.contains("# Role") && !p.contains("# Deliverables"), "no expanded brief in direct mode");

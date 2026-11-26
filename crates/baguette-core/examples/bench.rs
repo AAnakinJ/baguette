@@ -169,7 +169,7 @@ async fn run_b(runner: &Runner, request: &str, dir: &Path, db: &Path) -> (f64, u
         Ok(s) => s,
         Err(e) => return (0.0, 0, 0, Some(e.to_string())),
     };
-    let mut settings = Settings { language: "fr".into(), ..Settings::default() };
+    let mut settings = Settings { language: "en".into(), ..Settings::default() };
     settings.caps.per_task_usd = None;
     let p = Pipeline { store: &store, runner, settings: &settings, entitlements: Entitlements::new(Plan::Pro) };
     let (_tx, rx) = watch::channel(false);

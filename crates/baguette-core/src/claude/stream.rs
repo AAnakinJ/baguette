@@ -332,7 +332,7 @@ mod tests {
 
     #[test]
     fn assistant_with_tools_and_usage() {
-        let line = r#"{"type":"assistant","message":{"id":"m1","model":"claude-sonnet-5-5","content":[{"type":"text","text":"Je lis le fichier"},{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnop && npm test"}}],"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":300,"cache_creation_input_tokens":40}}}"#;
+        let line = r#"{"type":"assistant","message":{"id":"m1","model":"claude-sonnet-5-5","content":[{"type":"text","text":"Reading the file"},{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnop && npm test"}}],"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":300,"cache_creation_input_tokens":40}}}"#;
         let ev = parse_line(line);
         assert_eq!(ev.len(), 3);
         let Event::ToolUse { summary, name, .. } = &ev[1] else { panic!() };

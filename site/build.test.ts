@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { build } from "./build.mjs";
+import content from "./content.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LANGS = ["en", "fr", "es", "pt", "de", "ja", "ko", "hi", "ar", "id"];
@@ -40,16 +41,19 @@ describe("website, early access (now)", () => {
       expect(html).not.toMatch(/checkout|data-price|data-api|class="plan/);
       expect(html).not.toMatch(/\{product\}|undefined|\{\{|NaN/);
     }
-    expect(page("fr/index.html")).toContain("Accès anticipé");
-    expect(page("fr/index.html")).toContain("Pourquoi c&#39;est gratuit ?");
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/'/g, "&#39;");
+    for (const l of LANGS) {
+      expect(page(`${l}/index.html`)).toContain(esc(content[l].early.title));
+      expect(page(`${l}/index.html`)).toContain(esc(content[l].early.q));
+    }
   });
 
   it("publishes no personal identity and no terms of sale", () => {
     for (const l of ["fr", "en"]) {
       expect(existsSync(join(out, l, "terms.html"))).toBe(false);
-      for (const p of ["privacy", "licence"]) expect(page(`${l}/${p}.html`)).not.toMatch(/À compléter|example\.invalid/);
+      for (const p of ["privacy", "licence"]) expect(page(`${l}/${p}.html`)).not.toMatch(/To fill in|example\.invalid/);
     }
-    expect(page("fr/privacy.html")).toContain("ne collecte aucune donnée personnelle");
+    expect(page("en/privacy.html")).toContain("collects no personal data");
     expect(page("en/licence.html")).toContain("FSL-1.1-ALv2");
   });
 
@@ -67,7 +71,7 @@ describe("website, paid mode (later)", () => {
 
   it("shows prices, checkout links and the terms of sale", () => {
     expect(page("fr/index.html")).toContain("/v1/checkout?offer=annual&amp;lang=fr");
-    expect(page("fr/terms.html")).toContain("remboursement intégral de tout paiement demandé dans les 14 jours");
+    expect(page("en/terms.html")).toContain("full refund of any payment requested within 14 days");
     checkLinks(out);
   });
 

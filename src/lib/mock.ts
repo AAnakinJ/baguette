@@ -42,13 +42,13 @@ function mockShot(device: "desktop" | "mobile"): string {
 ${mobile ? `<text x="${pad}" y="200" font-size="${title}" font-weight="700" fill="#3d2410">chaque matin</text>` : ""}
 <text x="${pad}" y="${mobile ? 248 : 252}" font-size="${mobile ? 15 : 19}" fill="#7a5a3a" font-family="system-ui, sans-serif">Au levain, depuis 1987 · Lyon 4e</text>
 <rect x="${pad}" y="${mobile ? 280 : 300}" width="${mobile ? w - pad * 2 : 220}" height="48" rx="8" fill="#5b3a1e"/>
-<text x="${mobile ? w / 2 : pad + 110}" y="${mobile ? 310 : 330}" text-anchor="middle" font-size="16" fill="#fff" font-family="system-ui, sans-serif">Voir les horaires</text>
+<text x="${mobile ? w / 2 : pad + 110}" y="${mobile ? 310 : 330}" text-anchor="middle" font-size="16" fill="#fff" font-family="system-ui, sans-serif">See opening hours</text>
 ${cards.join("")}
 </svg>`;
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-const project: Project = { id: "p1", path: "C:/Users/demo/Documents/boulangerie", name: "boulangerie", created_at: Date.now() / 1000 };
+const project: Project = { id: "p1", path: "C:/Users/demo/Documents/bakery", name: "bakery", created_at: Date.now() / 1000 };
 const tasks = new Map<string, TaskRecord>();
 let spent = 0.42;
 

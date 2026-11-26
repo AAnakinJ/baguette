@@ -1,6 +1,6 @@
 # Benchmark: Claude Code alone vs Baguette
 
-Run on 24–25 November 2026, Claude Code 2.1.220, same default model on both sides, Claude subscription.
+Run on 24–25 November 2026, Claude Code 2.1.220, same default model on both sides, Claude subscription. These runs used the same five requests written in French, with the language checks looking for French pages; `bench/tasks.json` now holds them in English.
 
 ## Method
 

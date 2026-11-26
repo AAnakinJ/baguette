@@ -5,16 +5,16 @@
       "id": "t1-bakery-site",
       "persona": "beginner",
       "fixture": null,
-      "request": "Crée un site vitrine pour ma boulangerie « Au Bon Pain » à Lyon : une présentation, les horaires (du mardi au dimanche, de 7h à 19h), trois produits phares et un formulaire de contact. Le site doit être en français et bien s'afficher sur téléphone.",
+      "request": "Create a showcase website for my bakery \"Au Bon Pain\" in Lyon: an introduction, the opening hours (Tuesday to Sunday, 7am to 7pm), three signature products and a contact form. The site must be in English and display well on phones.",
       "checks": [
         { "id": "home", "kind": "html_exists" },
         { "id": "name", "kind": "html_contains", "pattern": "Au Bon Pain" },
-        { "id": "opens", "kind": "html_contains", "pattern": "(?i)7\\s*h|07[:h]00" },
-        { "id": "closes", "kind": "html_contains", "pattern": "(?i)19\\s*h|19[:h]00" },
-        { "id": "days", "kind": "html_contains", "pattern": "(?i)mardi" },
+        { "id": "opens", "kind": "html_contains", "pattern": "(?i)7\\s*(am|a\\.m\\.)|07[:h]00" },
+        { "id": "closes", "kind": "html_contains", "pattern": "(?i)7\\s*(pm|p\\.m\\.)|19[:h]00" },
+        { "id": "days", "kind": "html_contains", "pattern": "(?i)tuesday" },
         { "id": "form", "kind": "html_contains", "pattern": "(?i)<form" },
         { "id": "mobile", "kind": "html_contains", "pattern": "(?i)name=[\"']viewport[\"']" },
-        { "id": "french", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"']fr" },
+        { "id": "english", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"']en" },
         { "id": "links", "kind": "local_links_ok" }
       ]
     },
@@ -22,7 +22,7 @@
       "id": "t2-todo-feature",
       "persona": "developer",
       "fixture": "todo-cli",
-      "request": "Dans ce projet, ajoute une fonction exportée done(todos, id) et une commande `node todo.js done <id>` qui marque une tâche comme terminée. format() doit afficher les tâches terminées avec « [x] ». Ajoute des tests.",
+      "request": "In this project, add an exported function done(todos, id) and a command `node todo.js done <id>` that marks a task as done. format() must show done tasks with \"[x]\". Add tests.",
       "checks": [
         { "id": "own-tests-added", "kind": "test_cases_grow", "baseline": 3 },
         { "id": "existing-and-hidden-tests", "kind": "command", "command": "node --test", "hidden_files": ["hidden/todo-done.test.js"] }
@@ -32,7 +32,7 @@
       "id": "t3-invoice-bug",
       "persona": "freelance",
       "fixture": "invoice",
-      "request": "Mes clients se plaignent : le total TTC de mes factures est faux de quelques centimes quand il y a plusieurs lignes. Corrige-le.",
+      "request": "My clients complain: the total including tax on my invoices is off by a few cents when there are several lines. Fix it.",
       "checks": [
         { "id": "hidden-rounding-tests", "kind": "command", "command": "node --test", "hidden_files": ["hidden/invoice-rounding.test.js"] }
       ]
@@ -41,15 +41,15 @@
       "id": "t4-vague-site",
       "persona": "beginner",
       "fixture": null,
-      "request": "Fais-moi un site pour ma boulangerie Au Bon Pain, à Lyon.",
+      "request": "Make me a website for my bakery Au Bon Pain, in Lyon.",
       "checks": [
         { "id": "home", "kind": "html_exists" },
         { "id": "name", "kind": "html_contains", "pattern": "Au Bon Pain" },
         { "id": "city", "kind": "html_contains", "pattern": "Lyon" },
-        { "id": "hours", "kind": "html_contains", "pattern": "(?i)horaire|ouvert|ouverture" },
+        { "id": "hours", "kind": "html_contains", "pattern": "(?i)hours|open" },
         { "id": "contact", "kind": "html_contains", "pattern": "(?i)<form|mailto:|tel:" },
         { "id": "mobile", "kind": "html_contains", "pattern": "(?i)name=[\"']viewport[\"']" },
-        { "id": "french", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"']fr" },
+        { "id": "english", "kind": "html_contains", "pattern": "(?i)<html[^>]*lang=[\"']en" },
         { "id": "links", "kind": "local_links_ok" }
       ]
     },
@@ -57,7 +57,7 @@
       "id": "t5-csv-export",
       "persona": "developer",
       "fixture": "todo-cli",
-      "request": "Ajoute une commande `node todo.js export <fichier.csv>` qui exporte les tâches en CSV (colonnes id,text,done) et une fonction exportée toCsv(todos). Le texte des tâches peut contenir des virgules, des guillemets et des retours à la ligne : le CSV produit doit rester valide.",
+      "request": "Add a command `node todo.js export <file.csv>` that exports the tasks as CSV (columns id,text,done) and an exported function toCsv(todos). Task text can contain commas, quotes and line breaks: the CSV must stay valid.",
       "checks": [
         { "id": "own-tests-added", "kind": "test_cases_grow", "baseline": 3 },
         { "id": "hidden-csv-tests", "kind": "command", "command": "node --test", "hidden_files": ["hidden/todo-csv.test.js"] }

@@ -1,6 +1,6 @@
 {
   "_comment": "Copy to legal.local.json (never committed) and fill in. Used by the terms of sale and the privacy policy.",
-  "name": "Prénom NOM",
-  "email": "contact@exemple.fr",
+  "name": "First LAST",
+  "email": "contact@example.com",
   "mediator": ""
 }

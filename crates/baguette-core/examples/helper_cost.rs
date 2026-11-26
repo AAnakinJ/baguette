@@ -16,12 +16,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dir = PathBuf::from(std::env::args().nth(1).ok_or("dir required")?);
     let runner = Runner::new(locate::find_claude().ok_or("claude not found")?, ConnectionMode::Subscription, None)?;
     let answers = vec![
-        ("Quelle ambiance visuelle ?".to_string(), "Pastels doux et mélangés".to_string()),
-        ("Seulement le titre ?".to_string(), "Seulement le titre centré".to_string()),
+        ("Which visual mood?".to_string(), "Soft, blended pastels".to_string()),
+        ("Only the title?".to_string(), "Only the centered title".to_string()),
     ];
     let brief_prompt = prompts::brief(
-        "Crée une page web hello.html qui affiche « Bonjour Baguette » en grand titre centré, sur un fond doux.",
-        "fr",
+        "Create a hello.html web page that shows \"Hello Baguette\" as a big centered title on a soft background.",
+        "en",
         UiMode::Beginner,
         "Empty folder: the project starts from scratch.",
         &answers,
@@ -31,13 +31,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         title: "Page hello".into(),
         role: "r".into(),
         context: "c".into(),
-        objective: "A hello.html page showing « Bonjour Baguette » as a big centered title on a soft pastel background.".into(),
+        objective: "A hello.html page showing \"Hello Baguette\" as a big centered title on a soft pastel background.".into(),
         constraints: vec![],
         deliverables: vec![],
         success_criteria: vec![
-            Criterion { id: "c4".into(), description: "Le titre est bien centré, en grande taille.".into(), check: Check::Judge },
-            Criterion { id: "c5".into(), description: "Le fond est un dégradé pastel doux.".into(), check: Check::Judge },
-            Criterion { id: "c6".into(), description: "La page ne contient que le titre.".into(), check: Check::Judge },
+            Criterion { id: "c4".into(), description: "The title is centered and large.".into(), check: Check::Judge },
+            Criterion { id: "c5".into(), description: "The background is a soft pastel gradient.".into(), check: Check::Judge },
+            Criterion { id: "c6".into(), description: "The page contains only the title.".into(), check: Check::Judge },
         ],
         output_format: "f".into(),
         size: TaskSize::Tiny,
